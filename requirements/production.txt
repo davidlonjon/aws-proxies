@@ -1,2 +1,5 @@
-# Boto
+# Boto to manage AWS
 boto
+
+# Boto to manage AWS
+boto3

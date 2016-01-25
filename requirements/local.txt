@@ -6,3 +6,6 @@ pytest>=2.8.7
 
 # Boto to manage AWS
 boto
+
+# Boto to manage AWS
+boto3
