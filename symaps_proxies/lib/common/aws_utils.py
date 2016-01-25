@@ -15,14 +15,15 @@ def get_aws_session(profile):
     return session
 
 
-def get_ec2_resource(session):
-    """Get EC2 Resource
+def get_aws_resource(session, resource):
+    """Get AWS resource
 
     Args:
         session (object): AWS session
+        resource (string): AWS resource
 
     Returns:
         object: EC2 resource
     """
-    ec2 = session.resource('ec2')
-    return ec2
+    resource = session.resource(resource)
+    return resource
