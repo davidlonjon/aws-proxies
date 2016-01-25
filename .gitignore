@@ -151,3 +151,8 @@ sublime/
 # Local settings #
 ##############
 local.py
+
+# Jupyter #
+##############
+.ipynb_checkpoints/
+*.ipynb
