@@ -147,7 +147,3 @@ DerivedData
 sublime/
 *.sublime-project
 *.sublime-workspace
-
-# Ansbile #
-##############
-roles/vendors
