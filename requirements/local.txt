@@ -1,2 +1,5 @@
-# Boto
+#Pytest as the testing framework
+pytest>=2.8.7
+
+# Boto to manage AWS
 boto
