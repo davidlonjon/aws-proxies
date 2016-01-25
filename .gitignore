@@ -147,3 +147,7 @@ DerivedData
 sublime/
 *.sublime-project
 *.sublime-workspace
+
+# Local settings #
+##############
+local.py
