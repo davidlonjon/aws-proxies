@@ -54,15 +54,18 @@ def create_vpc(ec2, cidr_block, tags):
     return vpc.vpc_id
 
 
-def create_internet_gateways(ec2, vpcs):
-    for vpc in vpcs:
-        if 'create_internet_gateway' in vpc:
-
-
-
 def create_vpcs(ec2, vpcs):
     """Create AWS VPCS if a VPC does not exist (checking cidr block)
+
+    Args:
+        ec2 (object): EC2 resource
+        vpcs (dict): Vpcs
+
+    Returns:
+        dict: vpcs
     """
+
+    created_vpcs = []
     for vpc in vpcs:
         try:
             filters = [
@@ -82,11 +85,61 @@ def create_vpcs(ec2, vpcs):
                             vpc['CidrBlock'],
                             vpc_id
                             )
+                vpc['VpcId'] = vpc_id
             else:
+                for found_vpc in found_vpcs:
+                    vpc['VpcId'] = found_vpc.id
                 logger.info('The VPC with CIDR block "%s" does already exists',
                             vpc['CidrBlock'],
                             )
+            created_vpcs.append(vpc)
         except Exception as e:
             logger.error('The VPC with CIDR block "%s" could not be created. Error message %s',
                          vpc['CidrBlock'],
                          e.message)
+
+    return created_vpcs
+
+
+def create_internet_gateways(ec2, vpcs):
+    """Create internet gateways
+
+    Args:
+        ec2 (object): EC2 resource
+        vpcs (dict): Vpcs
+
+    Returns:
+        dict: internet gateways
+    """
+    created_igs = []
+    for vpc in vpcs:
+        if 'create_internet_gateway' in vpc:
+            filters = [
+                {
+                    'Name': 'attachment.vpc-id',
+                    'Values': [
+                        vpc['VpcId'],
+                    ]
+                }
+            ]
+
+            found_igs = list(ec2.internet_gateways.filter(Filters=filters))
+            if not found_igs:
+                ig = ec2.create_internet_gateway()
+                ec2.Vpc(vpc['VpcId']).attach_internet_gateway(
+                    InternetGatewayId=ig.id,
+                )
+                ig_id = ig.id
+            else:
+                for found_ig in found_igs:
+                    ig_id = found_ig.id
+                logger.info('The internet gateway was already created')
+
+            created_igs.append(
+                {
+                    'InternetGatewayId': ig_id,
+                    'attachment.vpc-id': vpc['VpcId']
+                }
+            )
+
+    return created_igs

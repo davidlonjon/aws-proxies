@@ -42,7 +42,10 @@ def main():
         logger.error('Could not access AWS EC2 resource. Error message %s', e.message)
         sys.exit()
 
-    aws.create_vpcs(ec2, settings.AWS_VPCS)
+    vpcs = aws.create_vpcs(ec2, settings.AWS_VPCS)
+    internet_gateways = aws.create_internet_gateways(ec2, vpcs)
+
+    print internet_gateways
 
 if __name__ == "__main__":
     main()
