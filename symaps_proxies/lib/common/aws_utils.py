@@ -54,6 +54,12 @@ def create_vpc(ec2, cidr_block, tags):
     return vpc.vpc_id
 
 
+def create_internet_gateways(ec2, vpcs):
+    for vpc in vpcs:
+        if 'create_internet_gateway' in vpc:
+
+
+
 def create_vpcs(ec2, vpcs):
     """Create AWS VPCS if a VPC does not exist (checking cidr block)
     """
@@ -63,7 +69,7 @@ def create_vpcs(ec2, vpcs):
                 {
                     'Name': 'cidrBlock',
                     'Values': [
-                        vpc['cidr_block'],
+                        vpc['CidrBlock'],
                     ]
                 }
             ]
@@ -71,16 +77,16 @@ def create_vpcs(ec2, vpcs):
             found_vpcs = list(ec2.vpcs.filter(Filters=filters))
 
             if not found_vpcs:
-                vpc_id = create_vpc(ec2, vpc['cidr_block'], vpc['tags'])
+                vpc_id = create_vpc(ec2, vpc['CidrBlock'], vpc['Tags'])
                 logger.info('A new VPC with CIDR block "%s" with ID %s has been created',
-                            vpc['cidr_block'],
+                            vpc['CidrBlock'],
                             vpc_id
                             )
             else:
                 logger.info('The VPC with CIDR block "%s" does already exists',
-                            vpc['cidr_block'],
+                            vpc['CidrBlock'],
                             )
         except Exception as e:
             logger.error('The VPC with CIDR block "%s" could not be created. Error message %s',
-                         vpc['cidr_block'],
+                         vpc['CidrBlock'],
                          e.message)
