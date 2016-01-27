@@ -55,7 +55,7 @@ def create_vpc(ec2, cidr_block, tags):
 
 
 def create_vpcs(ec2, vpcs):
-    """Create AWS VPCs
+    """Create AWS VPCS if a VPC does not exist (checking cidr block)
     """
     for vpc in vpcs:
         try:
