@@ -132,7 +132,7 @@ class AWSEC2Interface(object):
                             Tags=vpc['Tags']
                         )
 
-                    self.logger.info('A new VPC with CIDR block "%s" with ID %s has been created',
+                    self.logger.info('A new VPC with CIDR block "%s" with ID "%s" has been created',
                                      vpc['CidrBlock'],
                                      created_vpc.vpc_id
                                      )
@@ -205,7 +205,7 @@ class AWSEC2Interface(object):
                     )
                     ig_id = ig.id
                     self.logger.info(
-                        'The internet gateway with ID %s attached to VPC %s has been created',
+                        'The internet gateway with ID "%s" attached to VPC "%s" has been created',
                         ig.id,
                         vpc['VpcId']
                     )
@@ -252,7 +252,7 @@ class AWSEC2Interface(object):
                         subnet_id = created_subnet.id
                         self.logger.info(
                             'A new subnet with CIDR block "%s" ' +
-                            'with ID %s and attached to VPC "%s" has been created',
+                            'with ID "%s" and attached to VPC "%s" has been created',
                             subnet['CidrBlock'],
                             subnet_id,
                             vpc['VpcId']
@@ -306,8 +306,8 @@ class AWSEC2Interface(object):
 
                         sg_id = created_sg.id
                         self.logger.info(
-                            'A new security group with group name %s ' +
-                            'with ID %s and attached to VPC %s has been created',
+                            'A new security group with group name "%s" ' +
+                            'with ID "%s" and attached to VPC "%s" has been created',
                             sg['GroupName'],
                             sg_id,
                             vpc['VpcId']
@@ -315,7 +315,7 @@ class AWSEC2Interface(object):
                     else:
                         for found_sg in found_sgs:
                             sg_id = found_sg.id
-                        self.logger.info('The SecurityGroup with group name %s does already exists',
+                        self.logger.info('The SecurityGroup with group name "%s" does already exists',
                                          sg['GroupName'],
                                          )
 
