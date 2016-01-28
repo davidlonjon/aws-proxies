@@ -9,8 +9,8 @@ AWS_VPCS = [
                 'Value': 'symaps-prod-proxies'
             }
         ],
-        'create_internet_gateway': True,
-        'subnets': [
+        'CreateInternetGateway': True,
+        'Subnets': [
             {
                 'CidrBlock': '15.0.0.0/24',
             },

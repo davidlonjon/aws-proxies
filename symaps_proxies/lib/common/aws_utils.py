@@ -186,7 +186,7 @@ class AWSEC2Interface(object):
         """
         created_igs = []
         for vpc_id, vpc in vpcs.iteritems():
-            if 'create_internet_gateway' in vpc:
+            if 'CreateInternetGateway' in vpc:
                 filters = [
                     {
                         'Name': 'attachment.vpc-id',
