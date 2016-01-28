@@ -344,6 +344,13 @@ class AWSEC2Interface(object):
                             self.create_name_tag_for_resource(created_sg, vpc['BaseNameTag'], suffix)
 
                         sg_id = created_sg.id
+
+                        if 'IngressRules' in sg:
+                            self.authorize_sg_ingress_rules(created_sg, sg)
+
+                        if 'EgressRules' in sg:
+                            self.authorize_sg_egress_rules(created_sg, sg)
+
                         self.logger.info(
                             'A new security group with group name "%s" ' +
                             'with ID "%s" and attached to VPC "%s" has been created',
@@ -373,3 +380,25 @@ class AWSEC2Interface(object):
         }
 
         return created_sgs
+
+    def authorize_sg_ingress_rules(self, sg, sg_config):
+        """Authorize security group ingress (inbound) rules
+
+        Args:
+            sg (object): Security group
+            sg_config (dict): Security group config
+        """
+        for ingress_rule in sg_config['IngressRules']:
+            if 'IpPermissions' in ingress_rule:
+                sg.authorize_ingress(IpPermissions=ingress_rule['IpPermissions'])
+
+    def authorize_sg_egress_rules(self, sg, sg_config):
+        """Authorize security group egress (outbound) rules
+
+        Args:
+            sg (object): Security group
+            sg_config (dict): Security group config
+        """
+        for ingress_rule in sg_config['EgressRules']:
+            if 'IpPermissions' in ingress_rule:
+                sg.authorize_egress(IpPermissions=ingress_rule['IpPermissions'])

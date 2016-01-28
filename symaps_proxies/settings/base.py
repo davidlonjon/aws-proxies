@@ -21,6 +21,36 @@ AWS_VPCS = [
             {
                 'GroupName': 'proxies-sg',
                 'Description': 'Security group for proxies',
+                'IngressRules': [
+                    {
+                        'IpPermissions': [
+                            {
+                                'IpProtocol': 'tcp',
+                                'FromPort': 8000,
+                                'ToPort': 8000,
+                                'IpRanges': [
+                                    {
+                                        'CidrIp': '0.0.0.0/0'
+                                    },
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        'IpPermissions': [
+                            {
+                                'IpProtocol': 'tcp',
+                                'FromPort': 22,
+                                'ToPort': 22,
+                                'IpRanges': [
+                                    {
+                                        'CidrIp': '0.0.0.0/0'
+                                    },
+                                ]
+                            }
+                        ]
+                    }
+                ]
             }
         ]
     }
