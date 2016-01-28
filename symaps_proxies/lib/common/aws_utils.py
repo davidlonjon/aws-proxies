@@ -78,26 +78,6 @@ class AWSEC2Interface(object):
         resource = self.session.resource(resource)
         return resource
 
-    def create_vpc(self, cidr_block, tags):
-        """Create a single AWS VPC
-
-        Args:
-            cidr_block (string): Cidr block
-            tags (dict): Tags
-
-        Returns:
-            string: VPC id
-        """
-        vpc = self.ec2.create_vpc(
-            CidrBlock=cidr_block,
-        )
-
-        vpc.create_tags(
-            Tags=tags
-        )
-
-        return vpc.vpc_id
-
     def create_vpcs(self, vpcs):
         """Create AWS VPCS if a VPC does not exist (checking cidr block)
 
@@ -124,13 +104,20 @@ class AWSEC2Interface(object):
                 found_vpcs = list(self.ec2.vpcs.filter(Filters=filters))
 
                 if not found_vpcs:
-                    vpc_id = self.create_vpc(
-                        vpc['CidrBlock'], vpc['Tags'])
+                    created_vpc = self.ec2.create_vpc(
+                        CidrBlock=vpc['CidrBlock'],
+                    )
+
+                    if 'Tags' in vpc:
+                        created_vpc.create_tags(
+                            Tags=vpc['Tags']
+                        )
+
                     self.logger.info('A new VPC with CIDR block "%s" with ID %s has been created',
                                      vpc['CidrBlock'],
-                                     vpc_id
+                                     created_vpc.vpc_id
                                      )
-                    vpc['VpcId'] = vpc_id
+                    vpc['VpcId'] = created_vpc.vpc_id
                 else:
                     for found_vpc in found_vpcs:
                         vpc['VpcId'] = found_vpc.id
