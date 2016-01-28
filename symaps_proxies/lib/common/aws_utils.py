@@ -128,6 +128,33 @@ class AWSEC2Interface(object):
 
         return created_vpcs
 
+    def delete_vpcs(self, vpcs):
+        """Delete VPCs
+
+        Args:
+            vpcs (dict): VPCs
+        """
+        for vpc_id, vpc in vpcs.iteritems():
+            filters = [
+                {
+                    'Name': 'cidrBlock',
+                    'Values': [
+                        vpc['CidrBlock'],
+                    ]
+                }
+            ]
+
+            found_vpcs = list(self.ec2.vpcs.filter(Filters=filters))
+
+            if found_vpcs:
+                for found_vpc in found_vpcs:
+                    self.ec2.Vpc(found_vpc.id).delete()
+                    self.logger.error('The VPC with id % s has been deleted',
+                                      found_vpc.id
+                                      )
+            else:
+                self.logger.error('No VPC(s) were deleted')
+
     def create_internet_gateways(self, vpcs):
         """Create internet gateways
 
