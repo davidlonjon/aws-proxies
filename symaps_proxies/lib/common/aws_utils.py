@@ -48,7 +48,8 @@ class AWSEC2Interface(object):
         logging.getLogger(__name__).addHandler(NullHandler())
         logging.basicConfig(level=logging.INFO)
 
-        # Raise other modules log levels to make the logs for this module less cluttered with noise
+        # Raise other modules log levels to make the logs for this module less
+        # cluttered with noise
         for _ in ("boto3", "botocore"):
             logging.getLogger(_).setLevel(logging.WARNING)
 
