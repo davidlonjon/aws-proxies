@@ -218,8 +218,63 @@ class AWSEC2Interface(object):
                 created_igs.append(
                     {
                         'InternetGatewayId': ig_id,
-                        'attachment.vpc-id': vpc['VpcId']
                     }
                 )
 
-        return created_igs
+        return {
+            vpc['VpcId']: {
+                'InternetGateways': created_igs
+            }
+        }
+
+    def create_subnets(self, vpcs):
+        created_subnets = []
+        for vpc_id, vpc in vpcs.iteritems():
+            if 'Subnets' in vpc:
+                for subnet in vpc['Subnets']:
+                    filters = [
+                        {
+                            'Name': 'cidrBlock',
+                            'Values': [
+                                subnet['CidrBlock'],
+                            ]
+                        }
+                    ]
+
+                    found_subnets = list(
+                        self.ec2.subnets.filter(Filters=filters))
+
+                    if not found_subnets:
+                        created_subnet = self.ec2.create_subnet(
+                            VpcId=vpc['VpcId'], CidrBlock=subnet['CidrBlock'])
+                        created_subnet.create_tags(Tags=vpc['Tags'])
+
+                        subnet_id = created_subnet.id
+                        self.logger.info(
+                            'A new subnet with CIDR block "%s" ' +
+                            'with ID %s and attached to VPC "%s" has been created',
+                            subnet['CidrBlock'],
+                            subnet_id,
+                            vpc['VpcId']
+                        )
+                    else:
+                        for found_subnet in found_subnets:
+                            subnet_id = found_subnet.id
+                        self.logger.info('The subnet with CIDR block "%s" does already exists',
+                                         subnet['CidrBlock'],
+                                         )
+
+                    created_subnets.append(
+                        {
+                            'SubnetId': subnet_id,
+                            'CidrBlock': subnet['CidrBlock']
+                        }
+                    )
+
+        return {
+            vpc['VpcId']: {
+                'Subnets': created_subnets
+            }
+        }
+
+        return created_subnets
