@@ -90,9 +90,8 @@ class AWSEC2Interface(object):
             dict: vpcs
         """
 
-        created_vpcs = []
+        created_vpcs = {}
         for vpc in vpcs:
-            try:
                 filters = [
                     {
                         'Name': 'cidrBlock',
@@ -120,16 +119,12 @@ class AWSEC2Interface(object):
                                      )
                     vpc['VpcId'] = created_vpc.vpc_id
                 else:
-                    for found_vpc in found_vpcs:
-                        vpc['VpcId'] = found_vpc.id
+                    if len(found_vpcs) > 0:
+                        vpc['VpcId'] = found_vpcs[0].id
                     self.logger.info('The VPC with CIDR block "%s" does already exists',
                                      vpc['CidrBlock'],
                                      )
-                created_vpcs.append(vpc)
-            except Exception as e:
-                self.logger.error('The VPC with CIDR block "%s" could not be created. Error message %s',
-                                  vpc['CidrBlock'],
-                                  e.message)
+                created_vpcs[vpc['VpcId']] = vpc
 
         return created_vpcs
 
@@ -144,7 +139,7 @@ class AWSEC2Interface(object):
             dict: internet gateways
         """
         created_igs = []
-        for vpc in vpcs:
+        for vpc_id, vpc in vpcs.iteritems():
             if 'create_internet_gateway' in vpc:
                 filters = [
                     {
@@ -163,6 +158,11 @@ class AWSEC2Interface(object):
                         InternetGatewayId=ig.id,
                     )
                     ig_id = ig.id
+                    self.logger.info(
+                        'The internet gateway with ID %s attached to VPC %s has been created',
+                        ig.id,
+                        vpc['VpcId']
+                    )
                 else:
                     for found_ig in found_igs:
                         ig_id = found_ig.id
