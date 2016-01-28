@@ -278,3 +278,59 @@ class AWSEC2Interface(object):
         }
 
         return created_subnets
+
+    def create_security_groups(self, vpcs):
+        created_sgs = []
+        for vpc_id, vpc in vpcs.iteritems():
+            if 'SecurityGroups' in vpc:
+                for sg in vpc['SecurityGroups']:
+                    filters = [
+                        {
+                            'Name': 'group-name',
+                            'Values': [
+                                sg['GroupName'],
+                            ]
+                        }
+                    ]
+
+                    found_sgs = list(
+                        self.ec2.security_groups.filter(Filters=filters))
+
+                    if not found_sgs:
+                        created_sg = self.ec2.create_security_group(
+                            VpcId=vpc['VpcId'],
+                            GroupName=sg['GroupName'],
+                            Description=sg['Description'])
+
+                        created_sg.create_tags(Tags=vpc['Tags'])
+
+                        sg_id = created_sg.id
+                        self.logger.info(
+                            'A new security group with group name %s ' +
+                            'with ID %s and attached to VPC %s has been created',
+                            sg['GroupName'],
+                            sg_id,
+                            vpc['VpcId']
+                        )
+                    else:
+                        for found_sg in found_sgs:
+                            sg_id = found_sg.id
+                        self.logger.info('The SecurityGroup with group name %s does already exists',
+                                         sg['GroupName'],
+                                         )
+
+                    created_sgs.append(
+                        {
+                            'SecurityGroupId': sg_id,
+                            'GroupName': sg['GroupName'],
+                            'Description': sg['Description'],
+                        }
+                    )
+
+        return {
+            vpc['VpcId']: {
+                'SecurityGroups': created_sgs
+            }
+        }
+
+        return created_sgs

@@ -18,6 +18,12 @@ AWS_VPCS = [
             {
                 'CidrBlock': '15.0.1.0/24',
             }
+        ],
+        'SecurityGroups': [
+            {
+                'GroupName': 'proxies-sg',
+                'Description': 'Security group for proxies',
+            }
         ]
     }
 ]

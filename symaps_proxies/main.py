@@ -19,9 +19,13 @@ def main():
     internet_gateways = AWSEC2Interface.create_internet_gateways(vpcs)
     config = AWSEC2Interface.merge_config(config, internet_gateways)
 
-    # Create  subnets
+    # Create subnets
     subnets = AWSEC2Interface.create_subnets(vpcs)
     config = AWSEC2Interface.merge_config(config, subnets)
+
+    # Create Security groups
+    security_groups = AWSEC2Interface.create_security_groups(vpcs)
+    config = AWSEC2Interface.merge_config(config, security_groups)
 
     print config
     with open(settings.AWS_CONFIG_FILE, 'w') as fp:
