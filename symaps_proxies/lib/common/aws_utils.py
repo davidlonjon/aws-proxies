@@ -79,6 +79,25 @@ class AWSEC2Interface(object):
         resource = self.session.resource(resource)
         return resource
 
+    # Taken from http://stackoverflow.com/questions/38987/how-can-i-merge-two-python-dictionaries-in-a-single-expression
+    def merge_dicts(self, *dict_args):
+        '''
+        Given any number of dicts, shallow copy and merge into a new dict,
+        precedence goes to key value pairs in latter dicts.
+        '''
+        result = {}
+        for dictionary in dict_args:
+            result.update(dictionary)
+        return result
+
+    def merge_config(self, conf1, conf2):
+        new_conf = {}
+        for key, value in conf2.iteritems():
+            if key in conf1:
+                new_conf[key] = self.merge_dicts(conf1[key], value)
+
+        return new_conf
+
     def create_vpcs(self, vpcs):
         """Create AWS VPCS if a VPC does not exist (checking cidr block)
 
