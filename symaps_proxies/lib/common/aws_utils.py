@@ -2,6 +2,7 @@
 import boto3
 import logging
 import sys
+import copy
 
 
 class AWSEC2Interface(object):
@@ -98,6 +99,35 @@ class AWSEC2Interface(object):
 
         return new_conf
 
+    def create_suffix(self, suffix, index):
+        """Create suffix using an index
+
+        Args:
+            suffix (string): Base suffix
+            index (int/string): Index
+
+        Returns:
+            string: Suffic
+        """
+        i = "%02d" % (int(index) + 1,)
+        return suffix + '-' + i
+
+    def create_name_tag_for_resource(self, resource, name_tag, suffix=''):
+        """Create a name tag for a EC2 resource using a suffix if passed
+
+        Args:
+            resource (object): EC2 resource
+            name_tag (dict): Tag dictionary
+            suffix (str, optional): Suffic
+        """
+        if suffix:
+            updated_name_tag = name_tag.copy()
+            updated_name_tag['Value'] = name_tag['Value'] + '-' + suffix
+
+        resource.create_tags(
+            Tags=[updated_name_tag]
+        )
+
     def create_vpcs(self, vpcs):
         """Create AWS VPCS if a VPC does not exist (checking cidr block)
 
@@ -110,7 +140,7 @@ class AWSEC2Interface(object):
         """
 
         created_vpcs = {}
-        for vpc in vpcs:
+        for index, vpc in enumerate(vpcs):
                 filters = [
                     {
                         'Name': 'cidrBlock',
@@ -127,10 +157,9 @@ class AWSEC2Interface(object):
                         CidrBlock=vpc['CidrBlock'],
                     )
 
-                    if 'Tags' in vpc:
-                        created_vpc.create_tags(
-                            Tags=vpc['Tags']
-                        )
+                    if 'BaseNameTag' in vpc:
+                        suffix = self.create_suffix('vpc', index)
+                        self.create_name_tag_for_resource(created_vpc, vpc['BaseNameTag'], suffix)
 
                     self.logger.info('A new VPC with CIDR block "%s" with ID "%s" has been created',
                                      vpc['CidrBlock'],
@@ -199,14 +228,19 @@ class AWSEC2Interface(object):
                 found_igs = list(
                     self.ec2.internet_gateways.filter(Filters=filters))
                 if not found_igs:
-                    ig = self.ec2.create_internet_gateway()
+                    created_ig = self.ec2.create_internet_gateway()
                     self.ec2.Vpc(vpc['VpcId']).attach_internet_gateway(
-                        InternetGatewayId=ig.id,
+                        InternetGatewayId=created_ig.id,
                     )
-                    ig_id = ig.id
+
+                    if 'BaseNameTag' in vpc:
+                        suffix = self.create_suffix('ig', 0)
+                        self.create_name_tag_for_resource(created_ig, vpc['BaseNameTag'], suffix)
+
+                    ig_id = created_ig.id
                     self.logger.info(
                         'The internet gateway with ID "%s" attached to VPC "%s" has been created',
-                        ig.id,
+                        created_ig.id,
                         vpc['VpcId']
                     )
                 else:
@@ -231,7 +265,7 @@ class AWSEC2Interface(object):
         created_subnets = []
         for vpc_id, vpc in vpcs.iteritems():
             if 'Subnets' in vpc:
-                for subnet in vpc['Subnets']:
+                for index, subnet in enumerate(vpc['Subnets']):
                     filters = [
                         {
                             'Name': 'cidrBlock',
@@ -247,7 +281,10 @@ class AWSEC2Interface(object):
                     if not found_subnets:
                         created_subnet = self.ec2.create_subnet(
                             VpcId=vpc['VpcId'], CidrBlock=subnet['CidrBlock'])
-                        created_subnet.create_tags(Tags=vpc['Tags'])
+
+                        if 'BaseNameTag' in vpc:
+                            suffix = self.create_suffix('subnet', index)
+                            self.create_name_tag_for_resource(created_subnet, vpc['BaseNameTag'], suffix)
 
                         subnet_id = created_subnet.id
                         self.logger.info(
@@ -283,7 +320,7 @@ class AWSEC2Interface(object):
         created_sgs = []
         for vpc_id, vpc in vpcs.iteritems():
             if 'SecurityGroups' in vpc:
-                for sg in vpc['SecurityGroups']:
+                for index, sg in enumerate(vpc['SecurityGroups']):
                     filters = [
                         {
                             'Name': 'group-name',
@@ -302,7 +339,9 @@ class AWSEC2Interface(object):
                             GroupName=sg['GroupName'],
                             Description=sg['Description'])
 
-                        created_sg.create_tags(Tags=vpc['Tags'])
+                        if 'BaseNameTag' in vpc:
+                            suffix = self.create_suffix('sg', index)
+                            self.create_name_tag_for_resource(created_sg, vpc['BaseNameTag'], suffix)
 
                         sg_id = created_sg.id
                         self.logger.info(
