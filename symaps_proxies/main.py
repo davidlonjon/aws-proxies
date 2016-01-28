@@ -2,6 +2,7 @@
 
 import lib.common.aws_utils as aws
 import settings
+import json
 
 
 def main():
@@ -23,6 +24,9 @@ def main():
     config = AWSEC2Interface.merge_config(config, subnets)
 
     print config
+    with open(settings.AWS_CONFIG_FILE, 'w') as fp:
+        print json.dump(config, fp)
+
 
 if __name__ == "__main__":
     main()

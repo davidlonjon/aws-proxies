@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+AWS_CONFIG_FILE = './config/aws_resources.json'
 AWS_VPCS = [
     {
         'CidrBlock': '15.0.0.0/16',

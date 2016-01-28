@@ -156,3 +156,7 @@ local.py
 ##############
 .ipynb_checkpoints/
 *.ipynb
+
+# Json config files #
+##############
+*/config/*.json
