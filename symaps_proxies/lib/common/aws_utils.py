@@ -29,7 +29,16 @@ class AWSEC2Interface(object):
             self.logger.info('AWS EC2 resource created')
         except Exception as e:
             self.logger.error(
-                'Could not access AWS EC2 resource. Error message %s', e.message)
+                'Could not create AWS EC2 resource. Error message %s', e.message)
+            sys.exit()
+
+        # Get AWS EC2 Client
+        try:
+            self.ec2_client = self.__get_client_from_resource(self.ec2)
+            self.logger.info('AWS EC2 client created')
+        except Exception as e:
+            self.logger.error(
+                'Could not create AWS EC2 client. Error message %s', e.message)
             sys.exit()
 
     def __setup_logger(self):
@@ -78,6 +87,18 @@ class AWSEC2Interface(object):
         """
         resource = self.session.resource(resource)
         return resource
+
+    def __get_client_from_resource(self, resource):
+        """Get AWS resource
+
+        Args:
+            resource (object): AWS Resource
+
+        Returns:
+            object: EC2 resource
+        """
+        client = resource.meta.client
+        return client
 
     # Taken from http://stackoverflow.com/questions/38987/how-can-i-merge-two-python-dictionaries-in-a-single-expression
     def merge_dicts(self, *dict_args):
