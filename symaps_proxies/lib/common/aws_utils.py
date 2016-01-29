@@ -2,7 +2,6 @@
 import boto3
 import logging
 import sys
-import copy
 
 
 class AWSEC2Interface(object):
