@@ -23,7 +23,7 @@ def main():
     #     print json.dump(AWSEC2Interface.config, fp)
 
     # Create Instances Infrastructure
-    AWSEC2Interface.bootstrap_instances_infrastucture(settings.AWS_INSTANCE_TYPES)
+    # AWSEC2Interface.bootstrap_instances_infrastucture(settings.AWS_INSTANCE_TYPES)
     print AWSEC2Interface.config
 if __name__ == "__main__":
     main()

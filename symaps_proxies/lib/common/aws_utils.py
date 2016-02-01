@@ -203,16 +203,7 @@ class AWSEC2Interface(object):
 
         created_vpcs = {}
         for index, vpc in enumerate(vpcs):
-            filters = [
-                {
-                    'Name': 'cidrBlock',
-                    'Values': [
-                        vpc['CidrBlock'],
-                    ]
-                }
-            ]
-
-            found_vpcs = list(self.ec2.vpcs.filter(Filters=filters))
+            found_vpcs = self.filter_resources(self.ec2.vpcs, 'cidrBlock', vpc['CidrBlock'])
 
             if not found_vpcs:
                 created_vpc = self.ec2.create_vpc(
@@ -246,16 +237,7 @@ class AWSEC2Interface(object):
             vpcs (dict): VPCs
         """
         for vpc_id, vpc in vpcs.iteritems():
-            filters = [
-                {
-                    'Name': 'cidrBlock',
-                    'Values': [
-                        vpc['CidrBlock'],
-                    ]
-                }
-            ]
-
-            found_vpcs = list(self.ec2.vpcs.filter(Filters=filters))
+            found_vpcs = self.filter_resources(self.ec2.vpcs, 'cidrBlock', vpc['CidrBlock'])
 
             if found_vpcs:
                 for found_vpc in found_vpcs:
@@ -280,17 +262,8 @@ class AWSEC2Interface(object):
         index = 0
         for vpc_id, vpc in vpcs.iteritems():
             if 'CreateInternetGateway' in vpc:
-                filters = [
-                    {
-                        'Name': 'attachment.vpc-id',
-                        'Values': [
-                            vpc['VpcId'],
-                        ]
-                    }
-                ]
+                found_igs = self.filter_resources(self.ec2.internet_gateways, 'attachment.vpc-id', vpc['VpcId'])
 
-                found_igs = list(
-                    self.ec2.internet_gateways.filter(Filters=filters))
                 if not found_igs:
                     created_ig = self.ec2.create_internet_gateway()
                     self.ec2.Vpc(vpc['VpcId']).attach_internet_gateway(
@@ -333,17 +306,7 @@ class AWSEC2Interface(object):
         for vpc_id, vpc in vpcs.iteritems():
             if 'Subnets' in vpc:
                 for index, subnet in enumerate(vpc['Subnets']):
-                    filters = [
-                        {
-                            'Name': 'cidrBlock',
-                            'Values': [
-                                subnet['CidrBlock'],
-                            ]
-                        }
-                    ]
-
-                    found_subnets = list(
-                        self.ec2.subnets.filter(Filters=filters))
+                    found_subnets = self.filter_resources(self.ec2.subnets, 'cidrBlock', subnet['CidrBlock'])
 
                     if not found_subnets:
                         created_subnet = self.ec2.create_subnet(
@@ -397,17 +360,7 @@ class AWSEC2Interface(object):
         for vpc_id, vpc in vpcs.iteritems():
             if 'SecurityGroups' in vpc:
                 for index, sg in enumerate(vpc['SecurityGroups']):
-                    filters = [
-                        {
-                            'Name': 'group-name',
-                            'Values': [
-                                sg['GroupName'],
-                            ]
-                        }
-                    ]
-
-                    found_sgs = list(
-                        self.ec2.security_groups.filter(Filters=filters))
+                    found_sgs = self.filter_resources(self.ec2.security_groups, 'group-name', sg['GroupName'])
 
                     if not found_sgs:
                         created_sg = self.ec2.create_security_group(
@@ -486,17 +439,7 @@ class AWSEC2Interface(object):
         created_route_tables = []
         index = 0
         for vpc_id, vpc in vpcs.iteritems():
-            filters = [
-                {
-                    'Name': 'vpc-id',
-                    'Values': [
-                        vpc_id,
-                    ]
-                }
-            ]
-
-            found_route_tables = list(
-                self.ec2.route_tables.filter(Filters=filters))
+            found_route_tables = self.filter_resources(self.ec2.route_tables, 'vpc-id', vpc_id)
 
             if not found_route_tables:
                 created_route_table = self.ec2.create_route_table(
@@ -732,3 +675,15 @@ class AWSEC2Interface(object):
             else:
                 sys.stdout.write("Please respond with 'yes' or 'no' "
                                  "(or 'y' or 'n').\n")
+
+    def filter_resources(self, function, filter_name, filter_value):
+        values = [filter_value]
+        if type(filter_value) is list:
+            values = filter_value
+
+        filters = [{
+            'Name': filter_name,
+            'Values': values
+        }]
+
+        return list(function.filter(Filters=filters))
