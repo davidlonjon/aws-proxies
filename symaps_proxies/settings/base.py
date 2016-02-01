@@ -2,21 +2,16 @@
 
 AWS_CONFIG_FILE = './config/aws_resources.json'
 AWS_TAG_NAME_BASE = 'symaps-prod-proxies'
-AWS_VPCS = [
+PROXY_NODES_COUNT = 4
+AWS_INSTANCE_TYPES = [
     {
-        'CidrBlock': '15.0.0.0/16',
-        'CreateInternetGateway': True,
-        'Subnets': [
-            {
-                'CidrBlock': '15.0.0.0/24',
-            },
-            {
-                'CidrBlock': '15.0.1.0/24',
-            }
-        ],
+        'InstanceType': 't2.nano',
+        'ImageName': 'tinyproxy',
+        'VPCCidrBlock': '15.0.0.0/16',
+        'CidrBlockFormatting': '15.0.\{0\}.\{1\}',
         'SecurityGroups': [
             {
-                'GroupName': 'proxies-sg',
+                'GroupName': 'default',
                 'Description': 'Security group for proxies',
                 'IngressRules': [
                     {
@@ -42,17 +37,6 @@ AWS_VPCS = [
                 ]
             }
         ]
-    }
-]
-
-PROXY_NODES_COUNT = 4
-
-AWS_INSTANCE_TYPES = [
-    {
-        'InstanceType': 't2.nano',
-        'ImageName': 'tinyproxy',
-        'VPCCidrBlock': '15.0.0.0/16',
-        'CidrBlockFormatting': '15.0.\{0\}.\{1\}',
     }
 ]
 

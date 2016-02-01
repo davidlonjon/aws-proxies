@@ -17,14 +17,12 @@ def main():
         tag_name_base=settings.AWS_TAG_NAME_BASE
     )
 
-    # Create VPCS Infrastructure
-    AWSEC2Interface.bootstrap_vpcs_infrastructure(settings.AWS_VPCS)
-
     # Create Instances Infrastructure
     AWSEC2Interface.bootstrap_instances_infrastucture(settings.AWS_INSTANCE_TYPES)
+
     # print AWSEC2Interface.config
-    with open(settings.AWS_CONFIG_FILE, 'w') as fp:
-        print json.dump(AWSEC2Interface.config, fp)
+    # with open(settings.AWS_CONFIG_FILE, 'w') as fp:
+    #     print json.dump(AWSEC2Interface.config, fp)
 
 if __name__ == "__main__":
     main()
