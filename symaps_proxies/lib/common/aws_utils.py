@@ -292,7 +292,7 @@ class AWSEC2Interface(object):
 
                 created_resources.append(
                     {
-                        'InternetGatewayId': resource,
+                        'InternetGatewayId': resource.id,
                     }
                 )
 
