@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+from __future__ import division
 import boto3
 import logging
+import math
 import sys
 
 
@@ -175,38 +177,39 @@ class AWSEC2Interface(object):
 
         created_vpcs = {}
         for index, vpc in enumerate(vpcs):
-                filters = [
-                    {
-                        'Name': 'cidrBlock',
-                        'Values': [
-                            vpc['CidrBlock'],
-                        ]
-                    }
-                ]
+            filters = [
+                {
+                    'Name': 'cidrBlock',
+                    'Values': [
+                        vpc['CidrBlock'],
+                    ]
+                }
+            ]
 
-                found_vpcs = list(self.ec2.vpcs.filter(Filters=filters))
+            found_vpcs = list(self.ec2.vpcs.filter(Filters=filters))
 
-                if not found_vpcs:
-                    created_vpc = self.ec2.create_vpc(
-                        CidrBlock=vpc['CidrBlock'],
-                    )
+            if not found_vpcs:
+                created_vpc = self.ec2.create_vpc(
+                    CidrBlock=vpc['CidrBlock'],
+                )
 
-                    if 'BaseNameTag' in vpc:
-                        suffix = self.create_suffix('vpc', index)
-                        self.create_name_tag_for_resource(created_vpc, vpc['BaseNameTag'], suffix)
+                if 'BaseNameTag' in vpc:
+                    suffix = self.create_suffix('vpc', index)
+                    self.create_name_tag_for_resource(
+                        created_vpc, vpc['BaseNameTag'], suffix)
 
-                    self.logger.info('A new VPC with CIDR block "%s" with ID "%s" has been created',
-                                     vpc['CidrBlock'],
-                                     created_vpc.vpc_id
-                                     )
-                    vpc['VpcId'] = created_vpc.vpc_id
-                else:
-                    if len(found_vpcs) > 0:
-                        vpc['VpcId'] = found_vpcs[0].id
-                    self.logger.info('The VPC with CIDR block "%s" does already exists',
-                                     vpc['CidrBlock'],
-                                     )
-                created_vpcs[vpc['VpcId']] = vpc
+                self.logger.info('A new VPC with CIDR block "%s" with ID "%s" has been created',
+                                 vpc['CidrBlock'],
+                                 created_vpc.vpc_id
+                                 )
+                vpc['VpcId'] = created_vpc.vpc_id
+            else:
+                if len(found_vpcs) > 0:
+                    vpc['VpcId'] = found_vpcs[0].id
+                self.logger.info('The VPC with CIDR block "%s" does already exists',
+                                 vpc['CidrBlock'],
+                                 )
+            created_vpcs[vpc['VpcId']] = vpc
 
         return created_vpcs
 
@@ -439,4 +442,167 @@ class AWSEC2Interface(object):
         """
         for ingress_rule in sg_config['EgressRules']:
             if 'IpPermissions' in ingress_rule:
-                sg.authorize_egress(IpPermissions=ingress_rule['IpPermissions'])
+                sg.authorize_egress(
+                    IpPermissions=ingress_rule['IpPermissions'])
+
+    def get_image_id_from_name(self, image_name):
+        filters = [
+            {
+                'Name': 'name',
+                'Values': [
+                    image_name,
+                ]
+            }
+        ]
+
+        found_images = list(self.ec2.images.filter(Filters=filters))
+
+        image_id = None
+        if found_images and len(found_images) == 1:
+            print found_images
+            image_id = found_images[0].id
+
+        return image_id
+
+    def get_instance_eni_mapping(self, instance_type):
+        instance_eni_mapping = []
+
+        if self.eni_mappings is not None:
+            instance_eni_mapping = [
+                item for item in self.eni_mappings if item[0] == instance_type]
+        return instance_eni_mapping
+
+    def get_subnet_cidr_suffix(self, proxy_nodes_count):
+        cidr_suffix = "/28"
+        if self.cidr_suffix_ips_number_mapping is not None:
+            for item in self.cidr_suffix_ips_number_mapping:
+                if item[0] > proxy_nodes_count:
+                    cidr_suffix = item[1]
+                    break
+
+        return cidr_suffix
+
+    def get_subnet_cidr_block(self, cidr_block_formatting, instance_index, subnet_suffix):
+        subnet_cidr_block = cidr_block_formatting.format(instance_index, 0) + subnet_suffix
+        return subnet_cidr_block
+
+    def create_instances(self, instances_config):
+        for instance_config in instances_config:
+            if 'ImageName' in instance_config:
+                image_id = self.get_image_id_from_name(
+                    instance_config['ImageName'])
+                instance_config['ImageId'] = image_id
+            elif 'ImageId' in instance_config:
+                image_id = instance_config['ImageId']
+
+            instance_enis_count = 1
+            instance_eni_private_ips_count = 1
+            instance_eni_public_ips_count = 1
+            instance_eni_mapping = self.get_instance_eni_mapping(
+                instance_config['InstanceType'])
+            if instance_eni_mapping:
+                instance_enis_count = instance_eni_mapping[0][1]
+                instance_eni_private_ips_count = instance_eni_mapping[0][2]
+                instance_eni_public_ips_count = instance_eni_mapping[0][2]
+
+            print "instance_enis_count: {0}".format(instance_enis_count)
+            print "instance_eni_private_ips_count: {0}".format(instance_eni_private_ips_count)
+            print "instance_eni_public_ips_count: {0}".format(instance_eni_public_ips_count)
+
+            instance_possible_ips_count = instance_eni_private_ips_count * \
+                instance_enis_count
+
+            print "instance_possible_ips_count: {0}".format(instance_possible_ips_count)
+            print "self.proxy_nodes_count: {0}".format(self.proxy_nodes_count)
+            subnets_count = instance_enis_count
+            print "subnets_count: {0}".format(subnets_count)
+            instance_per_type_count = int(
+                math.ceil(self.proxy_nodes_count / instance_possible_ips_count))
+
+            print "instance_per_type_count: {0}".format(instance_per_type_count)
+            instance_config['MinCount'] = instance_per_type_count
+            instance_config['MaxCount'] = instance_per_type_count
+
+            subnet_cidr_suffix = self.get_subnet_cidr_suffix(self.proxy_nodes_count)
+            subnet_cidr_block = self.get_subnet_cidr_block(
+                instance_config['CidrBlockFormatting'], 0, subnet_cidr_suffix)
+
+            print "*****"
+            print "subnet_cidr_suffix: {0}".format(subnet_cidr_suffix)
+
+            instance_config['instances'] = []
+            possible_ips_remaining = self.proxy_nodes_count
+            for i in range(0, instance_per_type_count):
+                instance_config['instances'].append({
+                    'NetworkInterfaces': []
+                })
+                for j in range(0, instance_enis_count):
+                    if possible_ips_remaining / instance_eni_private_ips_count > 1:
+                        private_ips_count = instance_eni_private_ips_count
+                    else:
+                        private_ips_count = possible_ips_remaining
+
+                    if possible_ips_remaining / instance_eni_public_ips_count > 1:
+                        public_ips_count = instance_eni_public_ips_count
+                    else:
+                        public_ips_count = possible_ips_remaining
+
+                    instance_config['instances'][i]['NetworkInterfaces'].append({
+                        'Ips': [],
+                        "Subnet": {
+                            'CidrBlock': subnet_cidr_block
+                        }
+
+                    })
+
+                    instance_config['instances'][i]['NetworkInterfaces'][j]['Ips'].append({
+                        # Not counting the primary private ip address
+                        'SecondaryPrivateIpAddressCount': private_ips_count - 1,
+                        # Not counting the primary public ip address
+                        'SecondaryPublicIpAddressCount': public_ips_count - 1,
+                    })
+
+                    possible_ips_remaining = possible_ips_remaining - instance_eni_private_ips_count
+                    if possible_ips_remaining <= 0:
+                        break
+            # print instance_config
+            question = "You are about to create {0} {1} instance(s) bound to a total of {2} elastic ip(s). Do you want to continue".format(
+                instance_per_type_count, instance_config['InstanceType'], self.proxy_nodes_count)
+
+            choice = self.query_yes_no(question)
+
+            print "Choice: {0}".format(choice)
+
+    # Taken from:
+    # http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
+    def query_yes_no(self, question, default="yes"):
+        """Ask a yes/no question via raw_input() and return their answer.
+
+        "question" is a string that is presented to the user.
+        "default" is the presumed answer if the user just hits <Enter>.
+            It must be "yes" (the default), "no" or None (meaning
+            an answer is required of the user).
+
+        The "answer" return value is True for "yes" or False for "no".
+        """
+        valid = {"yes": True, "y": True, "ye": True,
+                 "no": False, "n": False}
+        if default is None:
+            prompt = " [y/n] "
+        elif default == "yes":
+            prompt = " [Y/n] "
+        elif default == "no":
+            prompt = " [y/N] "
+        else:
+            raise ValueError("invalid default answer: '%s'" % default)
+
+        while True:
+            sys.stdout.write(question + prompt)
+            choice = raw_input().lower()
+            if default is not None and choice == '':
+                return valid[default]
+            elif choice in valid:
+                return valid[choice]
+            else:
+                sys.stdout.write("Please respond with 'yes' or 'no' "
+                                 "(or 'y' or 'n').\n")
