@@ -388,8 +388,7 @@ class AWSEC2Interface(object):
                             Description=sg['Description'])
 
                     else:
-                        resource = self.ec2.SecurityGroup(
-                            found_resources[0].id)
+                        resource = self.ec2.SecurityGroup(found_resources[0].id)
 
                     if 'IngressRules' in sg:
                         self.authorize_sg_ingress_rules(resource, sg)
@@ -474,11 +473,7 @@ class AWSEC2Interface(object):
                 self.ec2.route_tables, 'vpc-id', vpc_id)
 
             if not found_resources:
-                resource = self.ec2.create_route_table(
-                    VpcId=vpc_id
-                )
-
-                resource.id
+                resource = self.ec2.create_route_table(VpcId=vpc_id)
             else:
                 resource = self.ec2.RouteTable(found_resources[0].id)
 
