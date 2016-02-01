@@ -202,6 +202,10 @@ class AWSEC2Interface(object):
         self.config['vpcs'] = self.merge_config(
             self.config['vpcs'], route_tables)
 
+        network_acls = self.get_or_create_network_acls(self.config['vpcs'])
+        self.config['vpcs'] = self.merge_config(
+            self.config['vpcs'], network_acls)
+
     def get_or_create_vpcs(self, vpcs):
         """Get or create AWS vpcs
 
@@ -497,7 +501,54 @@ class AWSEC2Interface(object):
             index = index + 1
         return {
             vpc['VpcId']: {
-                'RouteTable': created_resources
+                'RouteTables': created_resources
+            }
+        }
+
+    def get_or_create_network_acls(self, vpcs):
+        """Get or create network acls
+
+        Args:
+            vpcs (object): Vpcs config
+
+        Returns:
+            object: Network acl config
+        """
+        created_resources = []
+        index = 0
+        for vpc_id, vpc in vpcs.iteritems():
+            found_resources = self.filter_resources(
+                self.ec2.network_acls, 'vpc-id', vpc_id)
+
+            if not found_resources:
+                resource = self.ec2.create_network_acl(
+                    VpcId=vpc_id
+                )
+
+                resource.id
+            else:
+                resource = self.ec2.NetworkAcl(found_resources[0].id)
+
+                self.logger.info(
+                    'A network acl ' +
+                    'with ID "%s" and attached to pvc "%s" has been created or already exists',
+                    resource.id,
+                    vpc_id
+                )
+
+            self.tag_with_name_with_suffix(resource, 'netacl', index, vpc.get('BaseNameTag', 'default'))
+
+            created_resources.append(
+                {
+                    'NetworkAclId': resource.id,
+                    'VpcId': vpc_id
+                }
+            )
+
+            index = index + 1
+        return {
+            vpc['VpcId']: {
+                'NetworkAcls': created_resources
             }
         }
 
