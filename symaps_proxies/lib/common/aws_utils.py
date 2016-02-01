@@ -709,7 +709,7 @@ class AWSEC2Interface(object):
                         instance_eni_private_ips_count
                     if possible_ips_remaining <= 0:
                         break
-            created_instance_type_config.append(instance_config)
+            created_instance_type_config = instance_config
 
             return created_instance_type_config
 
