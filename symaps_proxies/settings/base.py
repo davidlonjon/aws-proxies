@@ -44,7 +44,7 @@ AWS_VPCS = [
                                 'ToPort': 22,
                                 'IpRanges': [
                                     {
-                                        'CidrIp': '0.0.0.0/0'
+                                        'CidrIp': '0.0.0.0/0',
                                     },
                                 ]
                             }
