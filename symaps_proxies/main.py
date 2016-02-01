@@ -2,7 +2,7 @@
 
 import lib.common.aws_utils as aws
 import settings
-# import json
+import json
 
 
 def main():
@@ -19,11 +19,11 @@ def main():
     # Create VPCS Infrastructure
     AWSEC2Interface.bootstrap_vpcs_infrastructure(settings.AWS_VPCS)
 
-    # with open(settings.AWS_CONFIG_FILE, 'w') as fp:
-    #     print json.dump(AWSEC2Interface.config, fp)
-
     # Create Instances Infrastructure
-    # AWSEC2Interface.bootstrap_instances_infrastucture(settings.AWS_INSTANCE_TYPES)
+    AWSEC2Interface.bootstrap_instances_infrastucture(settings.AWS_INSTANCE_TYPES)
     print AWSEC2Interface.config
+    with open(settings.AWS_CONFIG_FILE, 'w') as fp:
+        print json.dump(AWSEC2Interface.config, fp)
+
 if __name__ == "__main__":
     main()
