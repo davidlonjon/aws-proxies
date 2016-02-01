@@ -572,8 +572,7 @@ class AWSEC2Interface(object):
         Returns:
             string: Subnet cidr block
         """
-        subnet_cidr_block = cidr_block_formatting.format(
-            instance_index, 0) + subnet_suffix
+        subnet_cidr_block = cidr_block_formatting.replace('\\', '').format(instance_index, 0) + subnet_suffix
         return subnet_cidr_block
 
     def bootstrap_instances_infrastucture(self, instance_types_config):

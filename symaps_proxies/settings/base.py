@@ -55,7 +55,7 @@ AWS_INSTANCE_TYPES = [
         'InstanceType': 't2.nano',
         'ImageName': 'tinyproxy',
         'VPCCidrBlock': '15.0.0.0/16',
-        'CidrBlockFormatting': '15.0.{0}.{1}',
+        'CidrBlockFormatting': '15.0.\{0\}.\{1\}',
     }
 ]
 
