@@ -107,7 +107,7 @@ class AWSEC2Interface(object):
         """Get AWS resource
 
         Args:
-            resource (object): AWS Resource
+            resource (object): AWS resource
 
         Returns:
             object: EC2 resource
@@ -154,7 +154,7 @@ class AWSEC2Interface(object):
         Args:
             resource (object): EC2 resource
             name_tag (dict): Tag dictionary
-            suffix (str, optional): Suffic
+            suffix (str, optional): Suffix
         """
         if suffix:
             updated_name_tag = name_tag.copy()
@@ -164,11 +164,15 @@ class AWSEC2Interface(object):
             Tags=[updated_name_tag]
         )
 
+    def tag_with_name_with_suffix(self, resource, type, index, tag_base_name):
+        suffix = self.create_suffix(type, index)
+        self.create_name_tag_for_resource(resource, tag_base_name, suffix)
+
     def bootstrap_vpcs_infrastructure(self, vpcs):
-        """Bootstrap VPCS infrastructure
+        """Bootstrap Vpcs infrastructure
 
         Args:
-            vpcs (object): VPCS base config
+            vpcs (object): Vpcs base config
 
         """
         created_vpcs = self.create_vpcs(vpcs)
@@ -176,7 +180,8 @@ class AWSEC2Interface(object):
 
         # Create Internet Gateways associated to VPCs
         internet_gateways = self.create_internet_gateways(self.config['vpcs'])
-        self.config['vpcs'] = self.merge_config(self.config['vpcs'], internet_gateways)
+        self.config['vpcs'] = self.merge_config(
+            self.config['vpcs'], internet_gateways)
 
         # Create subnets
         subnets = self.create_subnets(self.config['vpcs'])
@@ -184,48 +189,44 @@ class AWSEC2Interface(object):
 
         # Create Security groups
         security_groups = self.create_security_groups(self.config['vpcs'])
-        self.config['vpcs'] = self.merge_config(self.config['vpcs'], security_groups)
+        self.config['vpcs'] = self.merge_config(
+            self.config['vpcs'], security_groups)
 
         # Create route tables
         route_tables = self.create_route_tables(self.config['vpcs'])
-        self.config['vpcs'] = self.merge_config(self.config['vpcs'], route_tables)
+        self.config['vpcs'] = self.merge_config(
+            self.config['vpcs'], route_tables)
 
     def create_vpcs(self, vpcs):
-        """Create AWS VPCS if a VPC does not exist (checking cidr block)
+        """Create AWS vpcs if a vpc does not exist (checking cidr block)
 
         Args:
             ec2 (object): EC2 resource
-            vpcs (dict): Vpcs
+            vpcs (dict): Vpcs config
 
         Returns:
-            dict: vpcs
+            dict: vpcs configs
         """
 
         created_vpcs = {}
         for index, vpc in enumerate(vpcs):
-            found_vpcs = self.filter_resources(self.ec2.vpcs, 'cidrBlock', vpc['CidrBlock'])
+            found_resources = self.filter_resources(
+                self.ec2.vpcs, 'cidrBlock', vpc['CidrBlock'])
 
-            if not found_vpcs:
-                created_vpc = self.ec2.create_vpc(
-                    CidrBlock=vpc['CidrBlock'],
-                )
-
-                if 'BaseNameTag' in vpc:
-                    suffix = self.create_suffix('vpc', index)
-                    self.create_name_tag_for_resource(
-                        created_vpc, vpc['BaseNameTag'], suffix)
-
-                self.logger.info('A new VPC with CIDR block "%s" with ID "%s" has been created',
-                                 vpc['CidrBlock'],
-                                 created_vpc.vpc_id
-                                 )
-                vpc['VpcId'] = created_vpc.vpc_id
+            if not found_resources:
+                resource = self.ec2.create_vpc(CidrBlock=vpc['CidrBlock'])
             else:
-                if len(found_vpcs) > 0:
-                    vpc['VpcId'] = found_vpcs[0].id
-                self.logger.info('The VPC with CIDR block "%s" does already exists',
-                                 vpc['CidrBlock'],
-                                 )
+                resource = self.ec2.Vpc(found_resources[0].id)
+
+            self.logger.info('A vpc with ID "%s" and cidr block "%s" has been created or already exists',
+                             resource.vpc_id,
+                             vpc['CidrBlock']
+                             )
+
+            self.tag_with_name_with_suffix(
+                resource, 'vpc', index, vpc.get('BaseNameTag', 'default'))
+
+            vpc['VpcId'] = resource.vpc_id
             created_vpcs[vpc['VpcId']] = vpc
 
         return created_vpcs
@@ -234,62 +235,68 @@ class AWSEC2Interface(object):
         """Delete VPCs
 
         Args:
-            vpcs (dict): VPCs
+            vpcs (dict): Vpcs config
         """
         for vpc_id, vpc in vpcs.iteritems():
-            found_vpcs = self.filter_resources(self.ec2.vpcs, 'cidrBlock', vpc['CidrBlock'])
+            found_vpcs = self.filter_resources(
+                self.ec2.vpcs, 'cidrBlock', vpc['CidrBlock'])
 
             if found_vpcs:
                 for found_vpc in found_vpcs:
                     self.ec2.Vpc(found_vpc.id).delete()
-                    self.logger.error('The VPC with id % s has been deleted',
+                    self.logger.error('The vpc with ID % s has been deleted',
                                       found_vpc.id
                                       )
             else:
-                self.logger.error('No VPC(s) were deleted')
+                self.logger.error('No vpc(s) were deleted')
 
     def create_internet_gateways(self, vpcs):
         """Create internet gateways
 
         Args:
             ec2 (object): EC2 resource
-            vpcs (dict): Vpcs
+            vpcs (dict): Vpcs config
 
         Returns:
-            dict: internet gateways
+            dict: Internet gateways config
         """
-        created_igs = []
+        created_resources = []
         index = 0
         for vpc_id, vpc in vpcs.iteritems():
             if 'CreateInternetGateway' in vpc:
-                found_igs = self.filter_resources(self.ec2.internet_gateways, 'attachment.vpc-id', vpc['VpcId'])
+                found_resources = self.filter_resources(
+                    self.ec2.internet_gateways, 'attachment.vpc-id', vpc['VpcId'])
 
-                if not found_igs:
-                    created_ig = self.ec2.create_internet_gateway()
+                if not found_resources:
+                    resource = self.ec2.create_internet_gateway()
                     self.ec2.Vpc(vpc['VpcId']).attach_internet_gateway(
-                        InternetGatewayId=created_ig.id,
-                    )
-
-                    if 'BaseNameTag' in vpc:
-                        suffix = self.create_suffix('ig', index)
-                        self.create_name_tag_for_resource(
-                            created_ig, vpc['BaseNameTag'], suffix)
-
-                    ig_id = created_ig.id
-                    self.logger.info(
-                        'The internet gateway with ID "%s" attached to VPC "%s" has been created',
-                        created_ig.id,
-                        vpc['VpcId']
+                        InternetGatewayId=resource.id,
                     )
                 else:
-                    for found_ig in found_igs:
-                        ig_id = found_ig.id
-                    self.logger.info(
-                        'The internet gateway was already created')
+                    resource = self.ec2.InternetGateway(found_resources[0].id)
 
-                created_igs.append(
+                    for attachment in resource.attachments:
+                        vpc_already_attached = False
+                        if attachment['VpcId'] == vpc['VpcId']:
+                            vpc_already_attached = True
+
+                        if not vpc_already_attached:
+                            self.ec2.Vpc(vpc['VpcId']).attach_internet_gateway(
+                                InternetGatewayId=resource.id,
+                            )
+
+                self.tag_with_name_with_suffix(
+                    resource, 'ig', index, vpc.get('BaseNameTag', 'default'))
+
+                self.logger.info(
+                    'An internet gateway with ID "%s" attached to vpc "%s" has been created or already exists',
+                    resource.id,
+                    vpc['VpcId']
+                )
+
+                created_resources.append(
                     {
-                        'InternetGatewayId': ig_id,
+                        'InternetGatewayId': resource,
                     }
                 )
 
@@ -297,107 +304,104 @@ class AWSEC2Interface(object):
 
         return {
             vpc['VpcId']: {
-                'InternetGateways': created_igs
+                'InternetGateways': created_resources
             }
         }
 
     def create_subnets(self, vpcs):
-        created_subnets = []
+        """Create subnets
+
+        Args:
+            vpcs (object): Vpcs config
+
+        Returns:
+            object: Subnets config
+        """
+        created_resources = []
         for vpc_id, vpc in vpcs.iteritems():
             if 'Subnets' in vpc:
                 for index, subnet in enumerate(vpc['Subnets']):
-                    found_subnets = self.filter_resources(self.ec2.subnets, 'cidrBlock', subnet['CidrBlock'])
+                    found_resources = self.filter_resources(
+                        self.ec2.subnets, 'cidrBlock', subnet['CidrBlock'])
 
-                    if not found_subnets:
-                        created_subnet = self.ec2.create_subnet(
+                    if not found_resources:
+                        resource = self.ec2.create_subnet(
                             VpcId=vpc['VpcId'], CidrBlock=subnet['CidrBlock'])
+                    else:
+                        resource = self.ec2.Subnet(found_resources[0].id)
 
-                        if 'BaseNameTag' in vpc:
-                            suffix = self.create_suffix('subnet', index)
-                            self.create_name_tag_for_resource(
-                                created_subnet, vpc['BaseNameTag'], suffix)
-
-                        subnet_id = created_subnet.id
                         self.logger.info(
-                            'A new subnet with CIDR block "%s" ' +
-                            'with ID "%s" and attached to VPC "%s" has been created',
+                            'A subnet with with ID "%s" ' +
+                            ', cidr block "%s" and attached to vpc "%s" has been created or already exists',
+                            resource.id,
                             subnet['CidrBlock'],
-                            subnet_id,
                             vpc['VpcId']
                         )
-                    else:
-                        for found_subnet in found_subnets:
-                            subnet_id = found_subnet.id
-                        self.logger.info('The subnet with CIDR block "%s" does already exists',
-                                         subnet['CidrBlock'],
-                                         )
 
-                    created_subnets.append(
+                    self.tag_with_name_with_suffix(
+                        resource, 'subnet', index, vpc.get('BaseNameTag', 'default'))
+
+                    created_resources.append(
                         {
-                            'SubnetId': subnet_id,
+                            'SubnetId': resource.id,
                             'CidrBlock': subnet['CidrBlock']
                         }
                     )
 
         return {
             vpc['VpcId']: {
-                'Subnets': created_subnets
+                'Subnets': created_resources
             }
         }
 
-        return created_subnets
+        return created_resources
 
     def create_security_groups(self, vpcs):
         """Create security groups
 
         Args:
-            vpcs (object): VPCS Config
+            vpcs (object): Vpcs config
 
         Returns:
             object: Security group config
         """
-        created_sgs = []
+        created_resources = []
         for vpc_id, vpc in vpcs.iteritems():
             if 'SecurityGroups' in vpc:
                 for index, sg in enumerate(vpc['SecurityGroups']):
-                    found_sgs = self.filter_resources(self.ec2.security_groups, 'group-name', sg['GroupName'])
+                    found_resources = self.filter_resources(
+                        self.ec2.security_groups, 'group-name', sg['GroupName'])
 
-                    if not found_sgs:
-                        created_sg = self.ec2.create_security_group(
+                    if not found_resources:
+                        resource = self.ec2.create_security_group(
                             VpcId=vpc['VpcId'],
                             GroupName=sg['GroupName'],
                             Description=sg['Description'])
 
-                        if 'BaseNameTag' in vpc:
-                            suffix = self.create_suffix('sg', index)
-                            self.create_name_tag_for_resource(
-                                created_sg, vpc['BaseNameTag'], suffix)
-
-                        sg_id = created_sg.id
-
-                        if 'IngressRules' in sg:
-                            self.authorize_sg_ingress_rules(created_sg, sg)
-
-                        if 'EgressRules' in sg:
-                            self.authorize_sg_egress_rules(created_sg, sg)
-
-                        self.logger.info(
-                            'A new security group with group name "%s" ' +
-                            'with ID "%s" and attached to VPC "%s" has been created',
-                            sg['GroupName'],
-                            sg_id,
-                            vpc['VpcId']
-                        )
                     else:
-                        for found_sg in found_sgs:
-                            sg_id = found_sg.id
-                        self.logger.info('The SecurityGroup with group name "%s" does already exists',
-                                         sg['GroupName'],
-                                         )
+                        resource = self.ec2.SecurityGroup(
+                            found_resources[0].id)
 
-                    created_sgs.append(
+                    if 'IngressRules' in sg:
+                        self.authorize_sg_ingress_rules(resource, sg)
+
+                    if 'EgressRules' in sg:
+                        self.authorize_sg_egress_rules(resource, sg)
+
+                    self.logger.info(
+                        'A security group with group name "%s" ' +
+                        ', with ID "%s" and attached to vpc "%s" has been created or already exists',
+                        sg['GroupName'],
+                        resource.id,
+                        vpc['VpcId']
+                    )
+
+                    self.tag_with_name_with_suffix(
+                        resource, 'sg', index, vpc.get('BaseNameTag', 'default'))
+
+                    created_resources.append(
                         {
-                            'SecurityGroupId': sg_id,
+                            'SecurityGroupId': resource.id,
                             'GroupName': sg['GroupName'],
                             'Description': sg['Description'],
                         }
@@ -405,69 +409,82 @@ class AWSEC2Interface(object):
 
         return {
             vpc['VpcId']: {
-                'SecurityGroups': created_sgs
+                'SecurityGroups': created_resources
             }
         }
 
-        return created_sgs
+        return created_resources
 
     def authorize_sg_ingress_rules(self, sg, sg_config):
         """Authorize security group ingress (inbound) rules
 
         Args:
-            sg (object): Security group
+            sg (object): Security group resource
             sg_config (dict): Security group config
         """
         for ingress_rule in sg_config['IngressRules']:
             if 'IpPermissions' in ingress_rule:
-                sg.authorize_ingress(
-                    IpPermissions=ingress_rule['IpPermissions'])
+                for permission in sg.ip_permissions:
+                    if (ingress_rule['IpProtocol'] != permission['IpProtocol'] and
+                            ingress_rule['FromPort'] != permission['FromPort'] and
+                            ingress_rule['ToPort'] != permission['ToPort'] and
+                            ingress_rule['IpRanges'] != permission['IpRanges']):
+                            sg.authorize_ingress(
+                                IpPermissions=ingress_rule['IpPermissions'])
 
     def authorize_sg_egress_rules(self, sg, sg_config):
         """Authorize security group egress (outbound) rules
 
         Args:
-            sg (object): Security group
+            sg (object): Security group resource
             sg_config (dict): Security group config
         """
-        for ingress_rule in sg_config['EgressRules']:
-            if 'IpPermissions' in ingress_rule:
-                sg.authorize_egress(
-                    IpPermissions=ingress_rule['IpPermissions'])
+        for egress_rule in sg_config['EgressRules']:
+            if 'IpPermissions' in egress_rule:
+                for permission in sg.ip_permissions:
+                    if (egress_rule['IpProtocol'] != permission['IpProtocol'] and
+                            egress_rule['FromPort'] != permission['FromPort'] and
+                            egress_rule['ToPort'] != permission['ToPort'] and
+                            egress_rule['IpRanges'] != permission['IpRanges']):
+                            sg.authorize_ingress(
+                                IpPermissions=egress_rule['IpPermissions'])
 
     def create_route_tables(self, vpcs):
-        created_route_tables = []
+        """Create route tables
+
+        Args:
+            vpcs (object): Vpcs config
+
+        Returns:
+            object: Route tables config
+        """
+        created_resources = []
         index = 0
         for vpc_id, vpc in vpcs.iteritems():
-            found_route_tables = self.filter_resources(self.ec2.route_tables, 'vpc-id', vpc_id)
+            found_resources = self.filter_resources(
+                self.ec2.route_tables, 'vpc-id', vpc_id)
 
-            if not found_route_tables:
-                created_route_table = self.ec2.create_route_table(
+            if not found_resources:
+                resource = self.ec2.create_route_table(
                     VpcId=vpc_id
                 )
 
-                if 'BaseNameTag' in vpc:
-                    suffix = self.create_suffix('rt', index)
-                    self.create_name_tag_for_resource(
-                        created_route_table, vpc['BaseNameTag'], suffix)
+                resource.id
+            else:
+                resource = self.ec2.RouteTable(found_resources[0].id)
 
-                route_table_id = created_route_table.id
                 self.logger.info(
-                    'A new route table ' +
-                    'with ID "%s" and attached to VPC "%s" has been created',
-                    route_table_id,
+                    'A route table ' +
+                    'with ID "%s" and attached to pvc "%s" has been created or already exists',
+                    resource.id,
                     vpc_id
                 )
-            else:
-                for found_route_tables in found_route_tables:
-                    route_table_id = found_route_tables.id
-                self.logger.info('The route table attached to VPC ID "%s" already exists',
-                                 vpc_id,
-                                 )
 
-            created_route_tables.append(
+            self.tag_with_name_with_suffix(resource, 'rt', index, vpc.get('BaseNameTag', 'default'))
+
+            created_resources.append(
                 {
-                    'RouteTableId': route_table_id,
+                    'RouteTableId': resource.id,
                     'VpcId': vpc_id
                 }
             )
@@ -475,7 +492,7 @@ class AWSEC2Interface(object):
             index = index + 1
         return {
             vpc['VpcId']: {
-                'RouteTable': created_route_tables
+                'RouteTable': created_resources
             }
         }
 
@@ -550,11 +567,13 @@ class AWSEC2Interface(object):
         Returns:
             string: Subnet cidr block
         """
-        subnet_cidr_block = cidr_block_formatting.format(instance_index, 0) + subnet_suffix
+        subnet_cidr_block = cidr_block_formatting.format(
+            instance_index, 0) + subnet_suffix
         return subnet_cidr_block
 
     def bootstrap_instances_infrastucture(self, instance_types_config):
-        created_instance_types_config = self.setup_instance_types_config(instance_types_config)
+        created_instance_types_config = self.setup_instance_types_config(
+            instance_types_config)
 
         self.config['instance_types'].append(created_instance_types_config)
 
@@ -580,7 +599,8 @@ class AWSEC2Interface(object):
 
             # print "instance_enis_count: {0}".format(instance_enis_count)
             # print "instance_eni_private_ips_count: {0}".format(instance_eni_private_ips_count)
-            # print "instance_eni_public_ips_count: {0}".format(instance_eni_public_ips_count)
+            # print "instance_eni_public_ips_count:
+            # {0}".format(instance_eni_public_ips_count)
 
             instance_possible_ips_count = instance_eni_private_ips_count * \
                 instance_enis_count
@@ -592,11 +612,13 @@ class AWSEC2Interface(object):
             instance_per_type_count = int(
                 math.ceil(self.proxy_nodes_count / instance_possible_ips_count))
 
-            # print "instance_per_type_count: {0}".format(instance_per_type_count)
+            # print "instance_per_type_count:
+            # {0}".format(instance_per_type_count)
             instance_config['MinCount'] = instance_per_type_count
             instance_config['MaxCount'] = instance_per_type_count
 
-            subnet_cidr_suffix = self.get_subnet_cidr_suffix(self.proxy_nodes_count)
+            subnet_cidr_suffix = self.get_subnet_cidr_suffix(
+                self.proxy_nodes_count)
             subnet_cidr_block = self.get_subnet_cidr_block(
                 instance_config['CidrBlockFormatting'], 0, subnet_cidr_suffix)
 
@@ -635,7 +657,8 @@ class AWSEC2Interface(object):
                         'SecondaryPublicIpAddressCount': public_ips_count - 1,
                     })
 
-                    possible_ips_remaining = possible_ips_remaining - instance_eni_private_ips_count
+                    possible_ips_remaining = possible_ips_remaining - \
+                        instance_eni_private_ips_count
                     if possible_ips_remaining <= 0:
                         break
             created_instance_type_config.append(instance_config)
