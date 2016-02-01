@@ -236,7 +236,7 @@ class AWSEC2Interface(object):
                 resource, 'vpc', index, vpc.get('BaseNameTag', 'default'))
 
             vpc['VpcId'] = resource.vpc_id
-            created_resources[vpc['VpcId']] = vpc
+            created_resources[resource.vpc_id] = vpc
 
         return created_resources
 
@@ -493,8 +493,7 @@ class AWSEC2Interface(object):
 
             created_resources.append(
                 {
-                    'RouteTableId': resource.id,
-                    'VpcId': vpc_id
+                    'RouteTableId': resource.id
                 }
             )
 
@@ -541,7 +540,6 @@ class AWSEC2Interface(object):
             created_resources.append(
                 {
                     'NetworkAclId': resource.id,
-                    'VpcId': vpc_id
                 }
             )
 
