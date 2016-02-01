@@ -175,30 +175,26 @@ class AWSEC2Interface(object):
             vpcs (object): Vpcs base config
 
         """
-        created_vpcs = self.create_vpcs(vpcs)
+        created_vpcs = self.get_or_create_vpcs(vpcs)
         self.config['vpcs'] = created_vpcs
 
-        # Create Internet Gateways associated to VPCs
-        internet_gateways = self.create_internet_gateways(self.config['vpcs'])
+        internet_gateways = self.get_or_create_internet_gateways(self.config['vpcs'])
         self.config['vpcs'] = self.merge_config(
             self.config['vpcs'], internet_gateways)
 
-        # Create subnets
-        subnets = self.create_subnets(self.config['vpcs'])
+        subnets = self.get_or_create_subnets(self.config['vpcs'])
         self.config['vpcs'] = self.merge_config(self.config['vpcs'], subnets)
 
-        # Create Security groups
-        security_groups = self.create_security_groups(self.config['vpcs'])
+        security_groups = self.get_or_create_security_groups(self.config['vpcs'])
         self.config['vpcs'] = self.merge_config(
             self.config['vpcs'], security_groups)
 
-        # Create route tables
-        route_tables = self.create_route_tables(self.config['vpcs'])
+        route_tables = self.get_or_create_route_tables(self.config['vpcs'])
         self.config['vpcs'] = self.merge_config(
             self.config['vpcs'], route_tables)
 
-    def create_vpcs(self, vpcs):
-        """Create AWS vpcs if a vpc does not exist (checking cidr block)
+    def get_or_create_vpcs(self, vpcs):
+        """Get or create AWS vpcs
 
         Args:
             ec2 (object): EC2 resource
@@ -250,8 +246,8 @@ class AWSEC2Interface(object):
             else:
                 self.logger.error('No vpc(s) were deleted')
 
-    def create_internet_gateways(self, vpcs):
-        """Create internet gateways
+    def get_or_create_internet_gateways(self, vpcs):
+        """Get or create internet gateways
 
         Args:
             ec2 (object): EC2 resource
@@ -308,8 +304,8 @@ class AWSEC2Interface(object):
             }
         }
 
-    def create_subnets(self, vpcs):
-        """Create subnets
+    def get_or_create_subnets(self, vpcs):
+        """Get or create subnets
 
         Args:
             vpcs (object): Vpcs config
@@ -356,8 +352,8 @@ class AWSEC2Interface(object):
 
         return created_resources
 
-    def create_security_groups(self, vpcs):
-        """Create security groups
+    def get_or_create_security_groups(self, vpcs):
+        """Get or create security groups
 
         Args:
             vpcs (object): Vpcs config
@@ -449,8 +445,8 @@ class AWSEC2Interface(object):
                             sg.authorize_ingress(
                                 IpPermissions=egress_rule['IpPermissions'])
 
-    def create_route_tables(self, vpcs):
-        """Create route tables
+    def get_or_create_route_tables(self, vpcs):
+        """Get or create route tables
 
         Args:
             vpcs (object): Vpcs config
