@@ -58,7 +58,7 @@ AWS_VPCS = [
 
 PROXY_NODES_COUNT = 4
 
-AWS_INSTANCES = [
+AWS_INSTANCE_TYPES = [
     {
         'InstanceType': 't2.nano',
         'ImageName': 'tinyproxy',

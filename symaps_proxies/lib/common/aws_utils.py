@@ -53,7 +53,7 @@ class AWSEC2Interface(object):
 
         self.config = {
             'vpcs': {},
-            'instances': {}
+            'instance_types': []
         }
 
     def __setup_logger(self):
@@ -384,7 +384,7 @@ class AWSEC2Interface(object):
             vpcs (object): VPCS Config
 
         Returns:
-            object: Security grpup config
+            object: Security group config
         """
         created_sgs = []
         for vpc_id, vpc in vpcs.iteritems():
@@ -476,6 +476,14 @@ class AWSEC2Interface(object):
                     IpPermissions=ingress_rule['IpPermissions'])
 
     def get_image_id_from_name(self, image_name):
+        """Get AMI image ID from AMI name
+
+        Args:
+            image_name (string): AMI image name
+
+        Returns:
+            string: AMI image ID
+        """
         filters = [
             {
                 'Name': 'name',
@@ -489,12 +497,19 @@ class AWSEC2Interface(object):
 
         image_id = None
         if found_images and len(found_images) == 1:
-            print found_images
             image_id = found_images[0].id
 
         return image_id
 
     def get_instance_eni_mapping(self, instance_type):
+        """Get instance elastic network interface mapping
+
+        Args:
+            instance_type (string): Instance type
+
+        Returns:
+            Tuple: Instance elastic network interface mapping
+        """
         instance_eni_mapping = []
 
         if self.eni_mappings is not None:
@@ -503,6 +518,14 @@ class AWSEC2Interface(object):
         return instance_eni_mapping
 
     def get_subnet_cidr_suffix(self, proxy_nodes_count):
+        """Get subnet cidr suffix
+
+        Args:
+            proxy_nodes_count (integer): proxy nodes count
+
+        Returns:
+            string: subnet cidr suffix
+        """
         cidr_suffix = "/28"
         if self.cidr_suffix_ips_number_mapping is not None:
             for item in self.cidr_suffix_ips_number_mapping:
@@ -513,10 +536,26 @@ class AWSEC2Interface(object):
         return cidr_suffix
 
     def get_subnet_cidr_block(self, cidr_block_formatting, instance_index, subnet_suffix):
+        """Get subnet cidr block
+
+        Args:
+            cidr_block_formatting (string): Cidr block formating
+            instance_index (integer): Instance index
+            subnet_suffix (string): subnet suffix
+
+        Returns:
+            string: Subnet cidr block
+        """
         subnet_cidr_block = cidr_block_formatting.format(instance_index, 0) + subnet_suffix
         return subnet_cidr_block
 
-    def create_instances(self, instances_config):
+    def bootstrap_instances_infrastucture(self, instance_types_config):
+        created_instance_types_config = self.setup_instance_types_config(instance_types_config)
+
+        self.config['instance_types'].append(created_instance_types_config)
+
+    def setup_instance_types_config(self, instances_config):
+        created_instance_type_config = []
         for instance_config in instances_config:
             if 'ImageName' in instance_config:
                 image_id = self.get_image_id_from_name(
@@ -535,21 +574,21 @@ class AWSEC2Interface(object):
                 instance_eni_private_ips_count = instance_eni_mapping[0][2]
                 instance_eni_public_ips_count = instance_eni_mapping[0][2]
 
-            print "instance_enis_count: {0}".format(instance_enis_count)
-            print "instance_eni_private_ips_count: {0}".format(instance_eni_private_ips_count)
-            print "instance_eni_public_ips_count: {0}".format(instance_eni_public_ips_count)
+            # print "instance_enis_count: {0}".format(instance_enis_count)
+            # print "instance_eni_private_ips_count: {0}".format(instance_eni_private_ips_count)
+            # print "instance_eni_public_ips_count: {0}".format(instance_eni_public_ips_count)
 
             instance_possible_ips_count = instance_eni_private_ips_count * \
                 instance_enis_count
 
-            print "instance_possible_ips_count: {0}".format(instance_possible_ips_count)
-            print "self.proxy_nodes_count: {0}".format(self.proxy_nodes_count)
-            subnets_count = instance_enis_count
-            print "subnets_count: {0}".format(subnets_count)
+            # print "instance_possible_ips_count: {0}".format(instance_possible_ips_count)
+            # print "self.proxy_nodes_count: {0}".format(self.proxy_nodes_count)
+            # subnets_count = instance_enis_count
+            # print "subnets_count: {0}".format(subnets_count)
             instance_per_type_count = int(
                 math.ceil(self.proxy_nodes_count / instance_possible_ips_count))
 
-            print "instance_per_type_count: {0}".format(instance_per_type_count)
+            # print "instance_per_type_count: {0}".format(instance_per_type_count)
             instance_config['MinCount'] = instance_per_type_count
             instance_config['MaxCount'] = instance_per_type_count
 
@@ -557,8 +596,8 @@ class AWSEC2Interface(object):
             subnet_cidr_block = self.get_subnet_cidr_block(
                 instance_config['CidrBlockFormatting'], 0, subnet_cidr_suffix)
 
-            print "*****"
-            print "subnet_cidr_suffix: {0}".format(subnet_cidr_suffix)
+            # print "*****"
+            # print "subnet_cidr_suffix: {0}".format(subnet_cidr_suffix)
 
             instance_config['instances'] = []
             possible_ips_remaining = self.proxy_nodes_count
@@ -595,13 +634,9 @@ class AWSEC2Interface(object):
                     possible_ips_remaining = possible_ips_remaining - instance_eni_private_ips_count
                     if possible_ips_remaining <= 0:
                         break
-            # print instance_config
-            question = "You are about to create {0} {1} instance(s) bound to a total of {2} elastic ip(s). Do you want to continue".format(
-                instance_per_type_count, instance_config['InstanceType'], self.proxy_nodes_count)
+            created_instance_type_config.append(instance_config)
 
-            choice = self.query_yes_no(question)
-
-            print "Choice: {0}".format(choice)
+            return created_instance_type_config
 
     # Taken from:
     # http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input

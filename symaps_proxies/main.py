@@ -16,13 +16,14 @@ def main():
         proxy_nodes_count=settings.PROXY_NODES_COUNT
     )
 
-    # Create VPCS
+    # Create VPCS Infrastructure
     AWSEC2Interface.bootstrap_vpcs_infrastructure(settings.AWS_VPCS)
 
-    print AWSEC2Interface.config
     # with open(settings.AWS_CONFIG_FILE, 'w') as fp:
-    #     print json.dump(config, fp)
+    #     print json.dump(AWSEC2Interface.config, fp)
 
-    # AWSEC2Interface.create_instances(settings.AWS_INSTANCES)
+    # Create Instances Infrastructure
+    AWSEC2Interface.bootstrap_instances_infrastucture(settings.AWS_INSTANCE_TYPES)
+    print AWSEC2Interface.config
 if __name__ == "__main__":
     main()
