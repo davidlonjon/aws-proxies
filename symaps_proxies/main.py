@@ -13,7 +13,8 @@ def main():
         'david_dev',
         eni_mappings=settings.AWS_ENI_MAPPINGS,
         cidr_suffix_ips_number_mapping=settings.CIDR_SUFFIX_IPS_NUMBER_MAPPING,
-        proxy_nodes_count=settings.PROXY_NODES_COUNT
+        proxy_nodes_count=settings.PROXY_NODES_COUNT,
+        tag_name_base=settings.AWS_TAG_NAME_BASE
     )
 
     # Create VPCS Infrastructure

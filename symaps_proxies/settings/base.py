@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
 
 AWS_CONFIG_FILE = './config/aws_resources.json'
+AWS_TAG_NAME_BASE = 'symaps-prod-proxies'
 AWS_VPCS = [
     {
         'CidrBlock': '15.0.0.0/16',
-        'BaseNameTag': {
-            'Key': 'Name',
-            'Value': 'symaps-prod-proxies'
-        },
         'CreateInternetGateway': True,
         'Subnets': [
             {

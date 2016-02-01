@@ -47,6 +47,7 @@ class AWSEC2Interface(object):
         self.cidr_suffix_ips_number_mapping = kwargs.pop(
             'cidr_suffix_ips_number_mapping', None)
         self.proxy_nodes_count = kwargs.pop('proxy_nodes_count', 1)
+        self.tag_name_base = kwargs.pop('tag_name_base', 'proxies')
 
         if kwargs:
             raise TypeError('Unexpected **kwargs: %r' % kwargs)
@@ -157,20 +158,24 @@ class AWSEC2Interface(object):
         i = "%02d" % (int(index) + 1,)
         return suffix + '-' + i
 
-    def create_name_tag_for_resource(self, resource, name_tag, suffix=''):
+    def create_name_tag_for_resource(self, resource, tag_name_base, suffix=''):
         """Create a name tag for a EC2 resource using a suffix if passed
 
         Args:
             resource (object): EC2 resource
-            name_tag (dict): Tag dictionary
+            tag_name_base (string): Base name tag value
             suffix (str, optional): Suffix
         """
+        tag_name = {
+            'Key': 'Name',
+            'Value': tag_name_base
+        }
+
         if suffix:
-            updated_name_tag = name_tag.copy()
-            updated_name_tag['Value'] = name_tag['Value'] + '-' + suffix
+            tag_name['Value'] = tag_name['Value'] + '-' + suffix
 
         resource.create_tags(
-            Tags=[updated_name_tag]
+            Tags=[tag_name]
         )
 
     def tag_with_name_with_suffix(self, resource, type, index, tag_base_name):
@@ -233,7 +238,7 @@ class AWSEC2Interface(object):
                              )
 
             self.tag_with_name_with_suffix(
-                resource, 'vpc', index, vpc.get('BaseNameTag', 'default'))
+                resource, 'vpc', index, self.tag_name_base)
 
             vpc['VpcId'] = resource.vpc_id
             created_resources[resource.vpc_id] = vpc
@@ -295,7 +300,7 @@ class AWSEC2Interface(object):
                             )
 
                 self.tag_with_name_with_suffix(
-                    resource, 'ig', index, vpc.get('BaseNameTag', 'default'))
+                    resource, 'ig', index, self.tag_name_base)
 
                 self.logger.info(
                     'An internet gateway with ID "%s" attached to vpc "%s" has been created or already exists',
@@ -348,7 +353,7 @@ class AWSEC2Interface(object):
                         )
 
                     self.tag_with_name_with_suffix(
-                        resource, 'subnet', index, vpc.get('BaseNameTag', 'default'))
+                        resource, 'subnet', index, self.tag_name_base)
 
                     created_resources.append(
                         {
@@ -405,7 +410,7 @@ class AWSEC2Interface(object):
                     )
 
                     self.tag_with_name_with_suffix(
-                        resource, 'sg', index, vpc.get('BaseNameTag', 'default'))
+                        resource, 'sg', index, self.tag_name_base)
 
                     created_resources.append(
                         {
@@ -484,7 +489,7 @@ class AWSEC2Interface(object):
                     vpc_id
                 )
 
-            self.tag_with_name_with_suffix(resource, 'rt', index, vpc.get('BaseNameTag', 'default'))
+            self.tag_with_name_with_suffix(resource, 'rt', index, self.tag_name_base)
 
             created_resources.append(
                 {
@@ -530,7 +535,7 @@ class AWSEC2Interface(object):
                     vpc_id
                 )
 
-            self.tag_with_name_with_suffix(resource, 'netacl', index, vpc.get('BaseNameTag', 'default'))
+            self.tag_with_name_with_suffix(resource, 'netacl', index, self.tag_name_base)
 
             created_resources.append(
                 {
