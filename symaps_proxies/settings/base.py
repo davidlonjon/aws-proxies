@@ -56,7 +56,19 @@ AWS_VPCS = [
     }
 ]
 
-AWS_ENI_MAPPING = [
+PROXY_NODES_COUNT = 4
+
+AWS_INSTANCES = [
+    {
+        'InstanceType': 't2.nano',
+        'ImageName': 'tinyproxy',
+        'VPCCidrBlock': '15.0.0.0/16',
+        'CidrBlockFormatting': '15.0.{0}.{1}',
+    }
+]
+
+# Instance Type, Maximum Elastic Network Interfaces, IP Addresses per Interface
+AWS_ENI_MAPPINGS = [
     ('c1.medium', 2, 6),
     ('c1.xlarge', 4, 15),
     ('c3.large', 3, 10),
@@ -110,5 +122,23 @@ AWS_ENI_MAPPING = [
     ('t2.micro', 2, 2),
     ('t2.small', 2, 4),
     ('t2.medium', 3, 6),
-    ('t2.large', 3, 12)
+    ('t2.large', 3, 12),
+]
+
+# More info at http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_Subnets.html#SubnetSize
+# AWS allow block size is between a /28 netmask and /16 netmask and reserve 5 ip addresses
+CIDR_SUFFIX_IPS_NUMBER_MAPPING = [
+    (11, '/28'),
+    (27, '/27'),
+    (59, '/26'),
+    (123, '/25'),
+    (251, '/24'),
+    (507, '/23'),
+    (1019, '/22'),
+    (2043, '/21'),
+    (4091, '/20'),
+    (8187, '/19'),
+    (16379, '/18'),
+    (32763, '/17'),
+    (64531, '/16'),
 ]
