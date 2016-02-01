@@ -213,7 +213,7 @@ class AWSEC2Interface(object):
             dict: vpcs configs
         """
 
-        created_vpcs = {}
+        created_resources = {}
         for index, vpc in enumerate(vpcs):
             found_resources = self.filter_resources(
                 self.ec2.vpcs, 'cidrBlock', vpc['CidrBlock'])
@@ -232,9 +232,9 @@ class AWSEC2Interface(object):
                 resource, 'vpc', index, vpc.get('BaseNameTag', 'default'))
 
             vpc['VpcId'] = resource.vpc_id
-            created_vpcs[vpc['VpcId']] = vpc
+            created_resources[vpc['VpcId']] = vpc
 
-        return created_vpcs
+        return created_resources
 
     def delete_vpcs(self, vpcs):
         """Delete VPCs
