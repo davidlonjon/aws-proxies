@@ -186,6 +186,10 @@ class AWSEC2Interface(object):
         security_groups = self.create_security_groups(self.config['vpcs'])
         self.config['vpcs'] = self.merge_config(self.config['vpcs'], security_groups)
 
+        # Create route tables
+        route_tables = self.create_route_tables(self.config['vpcs'])
+        self.config['vpcs'] = self.merge_config(self.config['vpcs'], route_tables)
+
     def create_vpcs(self, vpcs):
         """Create AWS VPCS if a VPC does not exist (checking cidr block)
 
@@ -273,6 +277,7 @@ class AWSEC2Interface(object):
             dict: internet gateways
         """
         created_igs = []
+        index = 0
         for vpc_id, vpc in vpcs.iteritems():
             if 'CreateInternetGateway' in vpc:
                 filters = [
@@ -293,7 +298,7 @@ class AWSEC2Interface(object):
                     )
 
                     if 'BaseNameTag' in vpc:
-                        suffix = self.create_suffix('ig', 0)
+                        suffix = self.create_suffix('ig', index)
                         self.create_name_tag_for_resource(
                             created_ig, vpc['BaseNameTag'], suffix)
 
@@ -314,6 +319,8 @@ class AWSEC2Interface(object):
                         'InternetGatewayId': ig_id,
                     }
                 )
+
+                index = index + 1
 
         return {
             vpc['VpcId']: {
@@ -474,6 +481,60 @@ class AWSEC2Interface(object):
             if 'IpPermissions' in ingress_rule:
                 sg.authorize_egress(
                     IpPermissions=ingress_rule['IpPermissions'])
+
+    def create_route_tables(self, vpcs):
+        created_route_tables = []
+        index = 0
+        for vpc_id, vpc in vpcs.iteritems():
+            filters = [
+                {
+                    'Name': 'vpc-id',
+                    'Values': [
+                        vpc_id,
+                    ]
+                }
+            ]
+
+            found_route_tables = list(
+                self.ec2.route_tables.filter(Filters=filters))
+
+            if not found_route_tables:
+                created_route_table = self.ec2.create_route_table(
+                    VpcId=vpc_id
+                )
+
+                if 'BaseNameTag' in vpc:
+                    suffix = self.create_suffix('rt', index)
+                    self.create_name_tag_for_resource(
+                        created_route_table, vpc['BaseNameTag'], suffix)
+
+                route_table_id = created_route_table.id
+                self.logger.info(
+                    'A new route table ' +
+                    'with ID "%s" and attached to VPC "%s" has been created',
+                    route_table_id,
+                    vpc_id
+                )
+            else:
+                for found_route_tables in found_route_tables:
+                    route_table_id = found_route_tables.id
+                self.logger.info('The route table attached to VPC ID "%s" already exists',
+                                 vpc_id,
+                                 )
+
+            created_route_tables.append(
+                {
+                    'RouteTableId': route_table_id,
+                    'VpcId': vpc_id
+                }
+            )
+
+            index = index + 1
+        return {
+            vpc['VpcId']: {
+                'RouteTable': created_route_tables
+            }
+        }
 
     def get_image_id_from_name(self, image_name):
         """Get AMI image ID from AMI name

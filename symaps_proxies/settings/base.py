@@ -9,14 +9,7 @@ AWS_VPCS = [
             'Value': 'symaps-prod-proxies'
         },
         'CreateInternetGateway': True,
-        'Subnets': [
-            {
-                'CidrBlock': '15.0.0.0/24',
-            },
-            {
-                'CidrBlock': '15.0.1.0/24',
-            }
-        ],
+        'Subnets': [],  # Subnets will be created automatically with the instances
         'SecurityGroups': [
             {
                 'GroupName': 'proxies-sg',
