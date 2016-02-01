@@ -113,7 +113,8 @@ class AWSEC2Interface(object):
         client = resource.meta.client
         return client
 
-    # Taken from http://stackoverflow.com/questions/38987/how-can-i-merge-two-python-dictionaries-in-a-single-expression
+    # Taken from
+    # http://stackoverflow.com/questions/38987/how-can-i-merge-two-python-dictionaries-in-a-single-expression
     def merge_dicts(self, *dict_args):
         '''
         Given any number of dicts, shallow copy and merge into a new dict,
@@ -268,7 +269,8 @@ class AWSEC2Interface(object):
 
                     if 'BaseNameTag' in vpc:
                         suffix = self.create_suffix('ig', 0)
-                        self.create_name_tag_for_resource(created_ig, vpc['BaseNameTag'], suffix)
+                        self.create_name_tag_for_resource(
+                            created_ig, vpc['BaseNameTag'], suffix)
 
                     ig_id = created_ig.id
                     self.logger.info(
@@ -317,7 +319,8 @@ class AWSEC2Interface(object):
 
                         if 'BaseNameTag' in vpc:
                             suffix = self.create_suffix('subnet', index)
-                            self.create_name_tag_for_resource(created_subnet, vpc['BaseNameTag'], suffix)
+                            self.create_name_tag_for_resource(
+                                created_subnet, vpc['BaseNameTag'], suffix)
 
                         subnet_id = created_subnet.id
                         self.logger.info(
@@ -374,7 +377,8 @@ class AWSEC2Interface(object):
 
                         if 'BaseNameTag' in vpc:
                             suffix = self.create_suffix('sg', index)
-                            self.create_name_tag_for_resource(created_sg, vpc['BaseNameTag'], suffix)
+                            self.create_name_tag_for_resource(
+                                created_sg, vpc['BaseNameTag'], suffix)
 
                         sg_id = created_sg.id
 
@@ -423,7 +427,8 @@ class AWSEC2Interface(object):
         """
         for ingress_rule in sg_config['IngressRules']:
             if 'IpPermissions' in ingress_rule:
-                sg.authorize_ingress(IpPermissions=ingress_rule['IpPermissions'])
+                sg.authorize_ingress(
+                    IpPermissions=ingress_rule['IpPermissions'])
 
     def authorize_sg_egress_rules(self, sg, sg_config):
         """Authorize security group egress (outbound) rules
