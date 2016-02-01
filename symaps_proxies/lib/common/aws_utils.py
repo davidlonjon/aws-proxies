@@ -620,10 +620,21 @@ class AWSEC2Interface(object):
         return subnet_cidr_block
 
     def bootstrap_instances_infrastucture(self, instance_types_config):
-        created_instance_types_config = self.setup_instance_types_config(
-            instance_types_config)
+        created_instance_types_config = self.setup_instance_types_config(instance_types_config)
 
         self.config['instance_types'].append(created_instance_types_config)
+
+        # for instance_type in self.config['instance_types']:
+        #     vpc_id = instance_type['VpcId']
+        #     if vpc_id in self.config['vpcs']:
+        #         for instance in instance_type['Instances']:
+        #             for network_interface in instance['NetworkInterfaces']:
+        #                 for subnet in self.config['vpcs'][vpc_id]['Subnets']:
+        #                     subnet_already_exists = False
+        #                     if subnet['CidrBlock'] == network_interface['Subnet']['CidrBlock']:
+        #                         subnet_already_exists = True
+        #                 if not subnet_already_exists:
+        #                     self.config['vpcs'][vpc_id]['Subnets'].append(network_interface['Subnet'])
 
     def setup_instance_types_config(self, instances_config):
         created_instance_type_config = []
@@ -634,6 +645,21 @@ class AWSEC2Interface(object):
                 instance_config['ImageId'] = image_id
             elif 'ImageId' in instance_config:
                 image_id = instance_config['ImageId']
+
+            if 'VPCCidrBlock' not in instance_config:
+                self.logger.error('ERROR: The instance type config need to have a VPCCidrBlock property')
+                sys.exit()
+
+            found_vpcs = self.filter_resources(self.ec2.vpcs, 'cidrBlock', instance_config['VPCCidrBlock'])
+
+            if found_vpcs:
+                instance_config['VpcId'] = found_vpcs[0].id
+            else:
+                self.logger.error(
+                    'ERROR: Could not find the vpc associated to cidr block "%s". ' +
+                    'Make sure the VPC infrastructure is created first.',
+                    instance_config['VPCCidrBlock'])
+                sys.exit()
 
             instance_enis_count = 1
             instance_eni_private_ips_count = 1
@@ -673,10 +699,10 @@ class AWSEC2Interface(object):
             # print "*****"
             # print "subnet_cidr_suffix: {0}".format(subnet_cidr_suffix)
 
-            instance_config['instances'] = []
+            instance_config['Instances'] = []
             possible_ips_remaining = self.proxy_nodes_count
             for i in range(0, instance_per_type_count):
-                instance_config['instances'].append({
+                instance_config['Instances'].append({
                     'NetworkInterfaces': []
                 })
                 for j in range(0, instance_enis_count):
@@ -690,7 +716,7 @@ class AWSEC2Interface(object):
                     else:
                         public_ips_count = possible_ips_remaining
 
-                    instance_config['instances'][i]['NetworkInterfaces'].append({
+                    instance_config['Instances'][i]['NetworkInterfaces'].append({
                         'Ips': [],
                         "Subnet": {
                             'CidrBlock': subnet_cidr_block
@@ -698,7 +724,7 @@ class AWSEC2Interface(object):
 
                     })
 
-                    instance_config['instances'][i]['NetworkInterfaces'][j]['Ips'].append({
+                    instance_config['Instances'][i]['NetworkInterfaces'][j]['Ips'].append({
                         # Not counting the primary private ip address
                         'SecondaryPrivateIpAddressCount': private_ips_count - 1,
                         # Not counting the primary public ip address

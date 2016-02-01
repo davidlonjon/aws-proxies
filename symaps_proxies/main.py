@@ -21,7 +21,7 @@ def main():
 
     # Create Instances Infrastructure
     AWSEC2Interface.bootstrap_instances_infrastucture(settings.AWS_INSTANCE_TYPES)
-    print AWSEC2Interface.config
+    # print AWSEC2Interface.config
     with open(settings.AWS_CONFIG_FILE, 'w') as fp:
         print json.dump(AWSEC2Interface.config, fp)
 
