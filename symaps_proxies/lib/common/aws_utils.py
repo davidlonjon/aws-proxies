@@ -164,6 +164,28 @@ class AWSEC2Interface(object):
             Tags=[updated_name_tag]
         )
 
+    def bootstrap_vpcs_infrastructure(self, vpcs):
+        """Bootstrap VPCS infrastructure
+
+        Args:
+            vpcs (object): VPCS base config
+
+        """
+        created_vpcs = self.create_vpcs(vpcs)
+        self.config['vpcs'] = created_vpcs
+
+        # Create Internet Gateways associated to VPCs
+        internet_gateways = self.create_internet_gateways(self.config['vpcs'])
+        self.config['vpcs'] = self.merge_config(self.config['vpcs'], internet_gateways)
+
+        # Create subnets
+        subnets = self.create_subnets(self.config['vpcs'])
+        self.config['vpcs'] = self.merge_config(self.config['vpcs'], subnets)
+
+        # Create Security groups
+        security_groups = self.create_security_groups(self.config['vpcs'])
+        self.config['vpcs'] = self.merge_config(self.config['vpcs'], security_groups)
+
     def create_vpcs(self, vpcs):
         """Create AWS VPCS if a VPC does not exist (checking cidr block)
 
@@ -356,6 +378,14 @@ class AWSEC2Interface(object):
         return created_subnets
 
     def create_security_groups(self, vpcs):
+        """Create security groups
+
+        Args:
+            vpcs (object): VPCS Config
+
+        Returns:
+            object: Security grpup config
+        """
         created_sgs = []
         for vpc_id, vpc in vpcs.iteritems():
             if 'SecurityGroups' in vpc:
