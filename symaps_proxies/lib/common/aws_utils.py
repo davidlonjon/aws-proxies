@@ -128,6 +128,15 @@ class AWSEC2Interface(object):
         return result
 
     def merge_config(self, conf1, conf2):
+        """Merge cconfig
+
+        Args:
+            conf1 (dict): First configuration
+            conf2 (dict): Second configuration
+
+        Returns:
+            dict: Merge config
+        """
         new_conf = {}
         for key, value in conf2.iteritems():
             if key in conf1:
