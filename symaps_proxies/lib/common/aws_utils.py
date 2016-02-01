@@ -6,7 +6,7 @@ import sys
 
 class AWSEC2Interface(object):
 
-    def __init__(self, profile):
+    def __init__(self, profile, **kwargs):
         """Constructor
 
         Args:
@@ -40,6 +40,19 @@ class AWSEC2Interface(object):
             self.logger.error(
                 'Could not create AWS EC2 client. Error message %s', e.message)
             sys.exit()
+
+        self.eni_mappings = kwargs.pop('eni_mappings', None)
+        self.cidr_suffix_ips_number_mapping = kwargs.pop(
+            'cidr_suffix_ips_number_mapping', None)
+        self.proxy_nodes_count = kwargs.pop('proxy_nodes_count', 1)
+
+        if kwargs:
+            raise TypeError('Unexpected **kwargs: %r' % kwargs)
+
+        self.config = {
+            'vpcs': {},
+            'instances': {}
+        }
 
     def __setup_logger(self):
         """Setup logger
