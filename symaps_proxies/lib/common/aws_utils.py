@@ -207,9 +207,12 @@ class AWSEC2Interface(object):
         self.config['vpcs'] = self.merge_config(
             self.config['vpcs'], route_tables)
 
+        self.associate_subnets_to_routes(self.config['vpcs'])
+
         network_acls = self.get_or_create_network_acls(self.config['vpcs'])
         self.config['vpcs'] = self.merge_config(
             self.config['vpcs'], network_acls)
+
 
     def get_or_create_vpcs(self, vpcs):
         """Get or create AWS vpcs
@@ -511,6 +514,22 @@ class AWSEC2Interface(object):
                 'RouteTables': created_resources
             }
         }
+
+    def associate_subnets_to_routes(self, vpcs):
+        """Associate subnets to routes
+
+        Args:
+            vpcs (dict): Vpcs config
+        """
+        for vpc_id, vpc in vpcs.iteritems():
+            for route in vpc['RouteTables']:
+                route_resource = self.ec2.RouteTable(route['RouteTableId'])
+
+                for subnet in vpc['Subnets']:
+                        found_associations = self.filter_resources(
+                            self.ec2.route_tables, 'association.subnet-id', subnet['SubnetId'])
+                        if not found_associations:
+                            route_resource.associate_with_subnet(SubnetId=subnet['SubnetId'])
 
     def get_or_create_network_acls(self, vpcs):
         """Get or create network acls
