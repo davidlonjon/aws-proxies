@@ -208,11 +208,11 @@ class AWSEC2Interface(object):
             self.config['vpcs'], route_tables)
 
         self.associate_subnets_to_routes(self.config['vpcs'])
+        self.create_ig_route(self.config['vpcs'])
 
         network_acls = self.get_or_create_network_acls(self.config['vpcs'])
         self.config['vpcs'] = self.merge_config(
             self.config['vpcs'], network_acls)
-
 
     def get_or_create_vpcs(self, vpcs):
         """Get or create AWS vpcs
@@ -530,6 +530,28 @@ class AWSEC2Interface(object):
                             self.ec2.route_tables, 'association.subnet-id', subnet['SubnetId'])
                         if not found_associations:
                             route_resource.associate_with_subnet(SubnetId=subnet['SubnetId'])
+
+    def create_ig_route(self, vpcs):
+        """Create internet gateway route
+
+        Args:
+            vpcs (dict): Vpcs config
+        """
+        for vpc_id, vpc in vpcs.iteritems():
+            for route in vpc['RouteTables']:
+                resource = self.ec2.RouteTable(route['RouteTableId'])
+                for route in resource.routes:
+                    route_exists = False
+                    for ig in vpc['InternetGateways']:
+                        route_exists = False
+                        if ig['InternetGatewayId'] == route['GatewayId']:
+                            route_exists = True
+                            break
+                        if not route_exists:
+                            resource.create_route(
+                                DestinationCidrBlock='0.0.0.0/0',
+                                GatewayId=ig['InternetGatewayId'],
+                            )
 
     def get_or_create_network_acls(self, vpcs):
         """Get or create network acls
