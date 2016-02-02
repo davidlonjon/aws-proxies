@@ -361,7 +361,8 @@ class AWSEC2Interface(object):
                     created_resources.append(
                         {
                             'SubnetId': resource.id,
-                            'CidrBlock': subnet['CidrBlock']
+                            'CidrBlock': subnet['CidrBlock'],
+                            'NetworkInterfaces': subnet['NetworkInterfaces']
                         }
                     )
 
@@ -683,6 +684,9 @@ class AWSEC2Interface(object):
         # Create VPCS Infrastructure
         self.bootstrap_vpcs_infrastructure([tmp_vpcs_config])
 
+        # Create network interfaces
+        self.create_network_interfaces(self.config['vpcs'])
+
     def setup_instance_types_config(self, instances_config):
         created_instance_type_config = []
         for instance_config in instances_config:
@@ -749,19 +753,20 @@ class AWSEC2Interface(object):
                         public_ips_count = possible_ips_remaining
 
                     instance_config['Instances'][i]['NetworkInterfaces'].append({
-                        'Ips': [],
+                        'uid': 'eni-' + str(i) + '-' + str(j),
+                        'Ips': {},
                         "Subnet": {
                             'CidrBlock': subnet_cidr_block
                         }
 
                     })
 
-                    instance_config['Instances'][i]['NetworkInterfaces'][j]['Ips'].append({
+                    instance_config['Instances'][i]['NetworkInterfaces'][j]['Ips'] = {
                         # Not counting the primary private ip address
                         'SecondaryPrivateIpAddressCount': private_ips_count - 1,
                         # Not counting the primary public ip address
                         'SecondaryPublicIpAddressCount': public_ips_count - 1,
-                    })
+                    }
 
                     possible_ips_remaining = possible_ips_remaining - \
                         instance_eni_private_ips_count
@@ -800,16 +805,56 @@ class AWSEC2Interface(object):
 
             # TODO: Need refactoring
             for instance in instance_type['Instances']:
+                enis_per_subnet = {}
                 for network_interface in instance['NetworkInterfaces']:
                     subnet_already_exists = False
+                    cidr_block = network_interface['Subnet']['CidrBlock']
                     for subnet in tmp_vpcs_config['Subnets']:
                         subnet_already_exists = False
-                        if subnet['CidrBlock'] == network_interface['Subnet']['CidrBlock']:
+                        if subnet['CidrBlock'] == cidr_block:
                             subnet_already_exists = True
                     if not subnet_already_exists:
-                        tmp_vpcs_config['Subnets'].append(network_interface['Subnet'])
-
+                        enis_per_subnet[cidr_block] = []
+                        enis_per_subnet[cidr_block].append({
+                            'uid': network_interface['uid'],
+                            'Ips': network_interface['Ips']
+                        })
+                        tmp_vpcs_config['Subnets'].append({
+                            'CidrBlock': network_interface['Subnet']['CidrBlock'],
+                            'NetworkInterfaces': enis_per_subnet[cidr_block]
+                        })
+                    else:
+                        enis_per_subnet[cidr_block].append({
+                            'uid': network_interface['uid'],
+                            'Ips': network_interface['Ips']
+                        })
         return tmp_vpcs_config
+
+    def create_network_interfaces(self, vpcs):
+        """Create network interfaces
+
+        Args:
+            vpcs (dict): Vpcs config
+        """
+        for vpc_id, vpc in vpcs.iteritems():
+            for subnet in vpc['Subnets']:
+                aws_subnet = self.ec2.Subnet(subnet['SubnetId'])
+                index = 0
+                for eni in subnet['NetworkInterfaces']:
+                    found_eni = self.filter_resources(aws_subnet.network_interfaces, 'tag-value', eni['uid'])
+                    if not found_eni:
+                        created_eni = aws_subnet.create_network_interface(
+                            SecondaryPrivateIpAddressCount=eni['Ips']['SecondaryPrivateIpAddressCount'],
+                        )
+                        self.tag_with_name_with_suffix(created_eni, 'eni', index, self.tag_name_base)
+
+                        created_eni.create_tags(
+                            Tags=[{
+                                'Key': 'uid',
+                                'Value': eni['uid']
+                            }]
+                        )
+                        index = index + 1
 
     # Taken from:
     # http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
