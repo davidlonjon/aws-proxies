@@ -266,7 +266,7 @@ class AWSEC2Interface(object):
             if found_vpcs:
                 for found_vpc in found_vpcs:
                     self.ec2.Vpc(found_vpc.id).delete()
-                    self.logger.error("The vpc with ID % s has been deleted",
+                    self.logger.error("The vpc with ID '%s' has been deleted",
                                       found_vpc.id
                                       )
             else:
@@ -353,8 +353,8 @@ class AWSEC2Interface(object):
                         resource = self.ec2.Subnet(found_resources[0].id)
 
                         self.logger.info(
-                            "A subnet with with ID '%s' " +
-                            ", cidr block '%s' and attached to vpc '%s' has been created or already exists",
+                            "A subnet with ID '%s', " +
+                            "cidr block '%s' and attached to vpc '%s' has been created or already exists",
                             resource.id,
                             subnet["CidrBlock"],
                             vpc["VpcId"]
@@ -412,8 +412,8 @@ class AWSEC2Interface(object):
                         self.authorize_sg_egress_rules(resource, sg)
 
                     self.logger.info(
-                        "A security group with group name '%s' " +
-                        ", with ID '%s' and attached to vpc '%s' has been created or already exists",
+                        "A security group with group name '%s', " +
+                        "with ID '%s' and attached to vpc '%s' has been created or already exists",
                         sg["GroupName"],
                         resource.id,
                         vpc["VpcId"]
@@ -896,7 +896,7 @@ class AWSEC2Interface(object):
                         )
                         index = index + 1
 
-                    self.logger.info("A network interface %s for subnet %s has been created or already exists",
+                    self.logger.info("A network interface '%s' for subnet '%s' has been created or already exists",
                                      eni["uid"],
                                      subnet["SubnetId"]
                                      )
