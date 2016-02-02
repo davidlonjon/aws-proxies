@@ -14,15 +14,16 @@ def main():
         eni_mappings=settings.AWS_ENI_MAPPINGS,
         cidr_suffix_ips_number_mapping=settings.CIDR_SUFFIX_IPS_NUMBER_MAPPING,
         proxy_nodes_count=settings.PROXY_NODES_COUNT,
-        tag_name_base=settings.AWS_TAG_NAME_BASE
+        tag_name_base=settings.AWS_TAG_NAME_BASE,
+        hvm_only_instance_types=settings.AWS_HVM_ONLY_INSTANCE_TYPES
     )
 
     # Create Instances Infrastructure
     AWSEC2Interface.bootstrap_instances_infrastucture(settings.AWS_INSTANCE_TYPES)
 
     # print AWSEC2Interface.config
-    # with open(settings.AWS_CONFIG_FILE, 'w') as fp:
-    #     print json.dump(AWSEC2Interface.config, fp)
+    with open(settings.AWS_CONFIG_FILE, 'w') as fp:
+        print json.dump(AWSEC2Interface.config, fp)
 
 if __name__ == "__main__":
     main()

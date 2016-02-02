@@ -48,6 +48,8 @@ class AWSEC2Interface(object):
             'cidr_suffix_ips_number_mapping', None)
         self.proxy_nodes_count = kwargs.pop('proxy_nodes_count', 1)
         self.tag_name_base = kwargs.pop('tag_name_base', 'proxies')
+        self.hvm_only_instance_types = kwargs.pop(
+            'hvm_only_instance_types', [])
 
         if kwargs:
             raise TypeError('Unexpected **kwargs: %r' % kwargs)
@@ -688,6 +690,8 @@ class AWSEC2Interface(object):
 
         self.config['instance_types'].append(created_instance_types_config)
 
+        self.check_image_virtualization_against_instance_types(self.config['instance_types'])
+
         tmp_vpcs_config = self.build_tmp_vpcs_config(instance_types_config)
 
         # Create VPCS Infrastructure
@@ -786,6 +790,27 @@ class AWSEC2Interface(object):
 
             return created_instance_type_config
 
+    def check_image_virtualization_against_instance_types(self, instance_types_config):
+        """Check that an image is supported by instance type
+
+        Args:
+            image_id (string): Image type
+            instance_type (string): Instance type
+        """
+        for instance_type_config in instance_types_config:
+            virtualization_type = self.ec2.Image(instance_type_config["ImageId"]).virtualization_type
+            prefix_instance_type = instance_type_config["InstanceType"][:2]
+
+            if ((virtualization_type == 'hvm' and prefix_instance_type not in self.hvm_only_instance_types) or
+                    (virtualization_type == 'paravirtual' and prefix_instance_type in self.hvm_only_instance_types)):
+                self.logger.error(
+                    'The image "%s" with virtualization "%s" is not supported by instance type "%s"',
+                    instance_type_config["ImageId"],
+                    virtualization_type,
+                    instance_type_config["InstanceType"]
+                )
+                sys.exit()
+
     def build_tmp_vpcs_config(self, instance_types_config):
         """Build a temporary vpcs config schema
 
@@ -857,7 +882,8 @@ class AWSEC2Interface(object):
                         aws_subnet.network_interfaces, 'tag-value', eni['uid'])
                     if not found_eni:
                         created_eni = aws_subnet.create_network_interface(
-                            SecondaryPrivateIpAddressCount=eni['Ips']['SecondaryPrivateIpAddressCount'],
+                            SecondaryPrivateIpAddressCount=eni['Ips'][
+                                'SecondaryPrivateIpAddressCount'],
                         )
                         self.tag_with_name_with_suffix(
                             created_eni, 'eni', index, self.tag_name_base)

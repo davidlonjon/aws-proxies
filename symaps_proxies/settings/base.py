@@ -98,6 +98,8 @@ AWS_ENI_MAPPINGS = [
     ('t2.large', 3, 12),
 ]
 
+AWS_HVM_ONLY_INSTANCE_TYPES = ['c4', 'd2',   'g2', 'i2', 'm4', 'r3', 't2']
+
 # More info at http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_Subnets.html#SubnetSize
 # AWS allow block size is between a /28 netmask and /16 netmask and reserve 5 ip addresses
 CIDR_SUFFIX_IPS_NUMBER_MAPPING = [
