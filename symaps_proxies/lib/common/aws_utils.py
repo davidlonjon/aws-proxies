@@ -29,14 +29,16 @@ class AWSEC2Interface(object):
             self.ec2 = self.__get_resource("ec2")
             self.logger.info("AWS EC2 resource created")
         except Exception as e:
-            raise ValueError("Could not create AWS EC2 resource. Error message {0}".format(e.message))
+            raise ValueError(
+                "Could not create AWS EC2 resource. Error message {0}".format(e.message))
 
         # Get AWS EC2 Client
         try:
             self.ec2_client = self.__get_client_from_resource(self.ec2)
             self.logger.info("AWS EC2 client created")
         except Exception as e:
-            raise ValueError("Could not create AWS EC2 client. Error message {0}".format(e.message))
+            raise ValueError(
+                "Could not create AWS EC2 client. Error message {0}".format(e.message))
 
         self.eni_mappings = kwargs.pop("eni_mappings", None)
         self.cidr_suffix_ips_number_mapping = kwargs.pop(
@@ -685,7 +687,8 @@ class AWSEC2Interface(object):
 
         self.config["instance_types"].append(created_instance_types_config)
 
-        self.check_image_virtualization_against_instance_types(self.config["instance_types"])
+        self.check_image_virtualization_against_instance_types(
+            self.config["instance_types"])
 
         tmp_vpcs_config = self.build_tmp_vpcs_config(instance_types_config)
 
@@ -794,12 +797,13 @@ class AWSEC2Interface(object):
         """
         for instance_type_config in instance_types_config:
             try:
-                virtualization_type = self.ec2.Image(instance_type_config["ImageId"]).virtualization_type
+                virtualization_type = self.ec2.Image(
+                    instance_type_config["ImageId"]).virtualization_type
                 virtualization_type = 'hvm'
                 prefix_instance_type = instance_type_config["InstanceType"][:2]
 
                 if ((virtualization_type == "hvm" and prefix_instance_type not in self.hvm_only_instance_types) or
-                    (virtualization_type == "paravirtual" and prefix_instance_type in self.hvm_only_instance_types)):
+                        (virtualization_type == "paravirtual" and prefix_instance_type in self.hvm_only_instance_types)):
                     raise Exception(
                         "The image {0} with virtualization {1} is not supported by instance type {2}".format(
                             instance_type_config["ImageId"],
