@@ -799,7 +799,6 @@ class AWSEC2Interface(object):
             try:
                 virtualization_type = self.ec2.Image(
                     instance_type_config["ImageId"]).virtualization_type
-                virtualization_type = 'hvm'
                 prefix_instance_type = instance_type_config["InstanceType"][:2]
 
                 if ((virtualization_type == "hvm" and prefix_instance_type not in self.hvm_only_instance_types) or
