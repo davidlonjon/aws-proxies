@@ -22,26 +22,21 @@ class AWSEC2Interface(object):
             self.session = self.__get_session(profile)
             self.logger.info("AWS Session created")
         except Exception:
-            self.logger.error("Could not open AWS session")
-            sys.exit()
+            raise ValueError("Could not open AWS session")
 
         # Get AWS EC2 Resource
         try:
             self.ec2 = self.__get_resource("ec2")
             self.logger.info("AWS EC2 resource created")
         except Exception as e:
-            self.logger.error(
-                "Could not create AWS EC2 resource. Error message %s", e.message)
-            sys.exit()
+            raise ValueError("Could not create AWS EC2 resource. Error message {0}".format(e.message))
 
         # Get AWS EC2 Client
         try:
             self.ec2_client = self.__get_client_from_resource(self.ec2)
             self.logger.info("AWS EC2 client created")
         except Exception as e:
-            self.logger.error(
-                "Could not create AWS EC2 client. Error message %s", e.message)
-            sys.exit()
+            raise ValueError("Could not create AWS EC2 client. Error message {0}".format(e.message))
 
         self.eni_mappings = kwargs.pop("eni_mappings", None)
         self.cidr_suffix_ips_number_mapping = kwargs.pop(
@@ -798,18 +793,22 @@ class AWSEC2Interface(object):
             instance_type (string): Instance type
         """
         for instance_type_config in instance_types_config:
-            virtualization_type = self.ec2.Image(instance_type_config["ImageId"]).virtualization_type
-            prefix_instance_type = instance_type_config["InstanceType"][:2]
+            try:
+                virtualization_type = self.ec2.Image(instance_type_config["ImageId"]).virtualization_type
+                virtualization_type = 'hvm'
+                prefix_instance_type = instance_type_config["InstanceType"][:2]
 
-            if ((virtualization_type == "hvm" and prefix_instance_type not in self.hvm_only_instance_types) or
+                if ((virtualization_type == "hvm" and prefix_instance_type not in self.hvm_only_instance_types) or
                     (virtualization_type == "paravirtual" and prefix_instance_type in self.hvm_only_instance_types)):
-                self.logger.error(
-                    "The image '%s' with virtualization '%s' is not supported by instance type '%s'",
-                    instance_type_config["ImageId"],
-                    virtualization_type,
-                    instance_type_config["InstanceType"]
-                )
-                sys.exit()
+                    raise Exception(
+                        "The image {0} with virtualization {1} is not supported by instance type {2}".format(
+                            instance_type_config["ImageId"],
+                            virtualization_type,
+                            instance_type_config["InstanceType"])
+                    )
+            except Exception as e:
+                raise ValueError("Error message {0}".format(e.message))
+                break
 
     def build_tmp_vpcs_config(self, instance_types_config):
         """Build a temporary vpcs config schema
