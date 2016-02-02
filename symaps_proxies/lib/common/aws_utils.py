@@ -67,6 +67,7 @@ class AWSEC2Interface(object):
             from logging import NullHandler
         except ImportError:
             class NullHandler(logging.Handler):
+
                 def emit(self, record):
                     pass
 
@@ -192,14 +193,16 @@ class AWSEC2Interface(object):
         created_vpcs = self.get_or_create_vpcs(vpcs)
         self.config['vpcs'] = created_vpcs
 
-        internet_gateways = self.get_or_create_internet_gateways(self.config['vpcs'])
+        internet_gateways = self.get_or_create_internet_gateways(self.config[
+                                                                 'vpcs'])
         self.config['vpcs'] = self.merge_config(
             self.config['vpcs'], internet_gateways)
 
         subnets = self.get_or_create_subnets(self.config['vpcs'])
         self.config['vpcs'] = self.merge_config(self.config['vpcs'], subnets)
 
-        security_groups = self.get_or_create_security_groups(self.config['vpcs'])
+        security_groups = self.get_or_create_security_groups(self.config[
+                                                             'vpcs'])
         self.config['vpcs'] = self.merge_config(
             self.config['vpcs'], security_groups)
 
@@ -397,7 +400,8 @@ class AWSEC2Interface(object):
                             Description=sg['Description'])
 
                     else:
-                        resource = self.ec2.SecurityGroup(found_resources[0].id)
+                        resource = self.ec2.SecurityGroup(
+                            found_resources[0].id)
 
                     if 'IngressRules' in sg:
                         self.authorize_sg_ingress_rules(resource, sg)
@@ -446,8 +450,8 @@ class AWSEC2Interface(object):
                         ingress_rule['FromPort'] == permission.get('FromPort', None) and
                         ingress_rule['ToPort'] == permission.get('ToPort', None) and
                         ingress_rule['IpRanges'] == permission.get('IpRanges', None)):
-                        rule_exists = True
-                        break
+                    rule_exists = True
+                    break
 
             if not rule_exists:
                 sg.authorize_ingress(
@@ -467,8 +471,8 @@ class AWSEC2Interface(object):
                         egress_rule['FromPort'] == permission.get('FromPort', None) and
                         egress_rule['ToPort'] == permission.get('ToPort', None) and
                         egress_rule['IpRanges'] == permission.get('IpRanges', None)):
-                        rule_exists = True
-                        break
+                    rule_exists = True
+                    break
 
             if not rule_exists:
                 sg.authorize_egress(
@@ -501,7 +505,8 @@ class AWSEC2Interface(object):
                     vpc_id
                 )
 
-            self.tag_with_name_with_suffix(resource, 'rt', index, self.tag_name_base)
+            self.tag_with_name_with_suffix(
+                resource, 'rt', index, self.tag_name_base)
 
             created_resources.append(
                 {
@@ -527,10 +532,11 @@ class AWSEC2Interface(object):
                 route_resource = self.ec2.RouteTable(route['RouteTableId'])
 
                 for subnet in vpc['Subnets']:
-                        found_associations = self.filter_resources(
-                            self.ec2.route_tables, 'association.subnet-id', subnet['SubnetId'])
-                        if not found_associations:
-                            route_resource.associate_with_subnet(SubnetId=subnet['SubnetId'])
+                    found_associations = self.filter_resources(
+                        self.ec2.route_tables, 'association.subnet-id', subnet['SubnetId'])
+                    if not found_associations:
+                        route_resource.associate_with_subnet(
+                            SubnetId=subnet['SubnetId'])
 
     def create_ig_route(self, vpcs):
         """Create internet gateway route
@@ -585,7 +591,8 @@ class AWSEC2Interface(object):
                     vpc_id
                 )
 
-            self.tag_with_name_with_suffix(resource, 'netacl', index, self.tag_name_base)
+            self.tag_with_name_with_suffix(
+                resource, 'netacl', index, self.tag_name_base)
 
             created_resources.append(
                 {
@@ -671,11 +678,13 @@ class AWSEC2Interface(object):
         Returns:
             string: Subnet cidr block
         """
-        subnet_cidr_block = cidr_block_formatting.replace('\\', '').format(instance_index, 0) + subnet_suffix
+        subnet_cidr_block = cidr_block_formatting.replace(
+            '\\', '').format(instance_index, 0) + subnet_suffix
         return subnet_cidr_block
 
     def bootstrap_instances_infrastucture(self, instance_types_config):
-        created_instance_types_config = self.setup_instance_types_config(instance_types_config)
+        created_instance_types_config = self.setup_instance_types_config(
+            instance_types_config)
 
         self.config['instance_types'].append(created_instance_types_config)
 
@@ -739,7 +748,8 @@ class AWSEC2Interface(object):
             possible_ips_remaining = self.proxy_nodes_count
             for i in range(0, instance_per_type_count):
                 instance_config['Instances'].append({
-                    'NetworkInterfaces': []
+                    'NetworkInterfaces': [],
+                    'CidrBlock': subnet_cidr_block
                 })
                 for j in range(0, instance_enis_count):
                     if possible_ips_remaining / instance_eni_private_ips_count > 1:
@@ -789,11 +799,13 @@ class AWSEC2Interface(object):
         for instance_type in instance_types_config:
 
             if 'VPCCidrBlock' not in instance_type:
-                self.logger.error('ERROR: The instance type config need to have a VPCCidrBlock property')
+                self.logger.error(
+                    'ERROR: The instance type config need to have a VPCCidrBlock property')
                 sys.exit()
 
             if 'SecurityGroups' not in instance_type:
-                self.logger.error('ERROR: The instance type config need to have a SecurityGroups property')
+                self.logger.error(
+                    'ERROR: The instance type config need to have a SecurityGroups property')
                 sys.exit()
 
             tmp_vpcs_config = {
@@ -803,31 +815,31 @@ class AWSEC2Interface(object):
                 'SecurityGroups': instance_type['SecurityGroups']
             }
 
-            # TODO: Need refactoring
+            enis_per_subnet = {}
             for instance in instance_type['Instances']:
-                enis_per_subnet = {}
                 for network_interface in instance['NetworkInterfaces']:
-                    subnet_already_exists = False
                     cidr_block = network_interface['Subnet']['CidrBlock']
+
+                    subnet_already_exists = False
                     for subnet in tmp_vpcs_config['Subnets']:
                         subnet_already_exists = False
                         if subnet['CidrBlock'] == cidr_block:
                             subnet_already_exists = True
-                    if not subnet_already_exists:
+
+                    if cidr_block not in enis_per_subnet:
                         enis_per_subnet[cidr_block] = []
-                        enis_per_subnet[cidr_block].append({
-                            'uid': network_interface['uid'],
-                            'Ips': network_interface['Ips']
-                        })
+
+                    enis_per_subnet[cidr_block].append({
+                        'uid': network_interface['uid'],
+                        'Ips': network_interface['Ips']
+                    })
+
+                    if not subnet_already_exists:
                         tmp_vpcs_config['Subnets'].append({
                             'CidrBlock': network_interface['Subnet']['CidrBlock'],
                             'NetworkInterfaces': enis_per_subnet[cidr_block]
                         })
-                    else:
-                        enis_per_subnet[cidr_block].append({
-                            'uid': network_interface['uid'],
-                            'Ips': network_interface['Ips']
-                        })
+
         return tmp_vpcs_config
 
     def create_network_interfaces(self, vpcs):
@@ -837,16 +849,18 @@ class AWSEC2Interface(object):
             vpcs (dict): Vpcs config
         """
         for vpc_id, vpc in vpcs.iteritems():
+            index = 0
             for subnet in vpc['Subnets']:
                 aws_subnet = self.ec2.Subnet(subnet['SubnetId'])
-                index = 0
                 for eni in subnet['NetworkInterfaces']:
-                    found_eni = self.filter_resources(aws_subnet.network_interfaces, 'tag-value', eni['uid'])
+                    found_eni = self.filter_resources(
+                        aws_subnet.network_interfaces, 'tag-value', eni['uid'])
                     if not found_eni:
                         created_eni = aws_subnet.create_network_interface(
                             SecondaryPrivateIpAddressCount=eni['Ips']['SecondaryPrivateIpAddressCount'],
                         )
-                        self.tag_with_name_with_suffix(created_eni, 'eni', index, self.tag_name_base)
+                        self.tag_with_name_with_suffix(
+                            created_eni, 'eni', index, self.tag_name_base)
 
                         created_eni.create_tags(
                             Tags=[{
@@ -855,6 +869,11 @@ class AWSEC2Interface(object):
                             }]
                         )
                         index = index + 1
+
+                    self.logger.info('A network interface %s for subnet %s has been created or already exists',
+                                     eni['uid'],
+                                     subnet['SubnetId']
+                                     )
 
     # Taken from:
     # http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
