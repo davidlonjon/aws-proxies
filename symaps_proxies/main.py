@@ -52,7 +52,7 @@ def main():
         sys.exit()
 
     # Create Instances Infrastructure
-    AWSEC2Interface.bootstrap_instances_infrastucture(settings.AWS_INSTANCE_TYPES)
+    AWSEC2Interface.bootstrap_instances_infrastucture(settings.AWS_INSTANCES_GROUPS_CONFIG)
 
     # print AWSEC2Interface.config
     with open(settings.AWS_CONFIG_FILE, 'w') as fp:

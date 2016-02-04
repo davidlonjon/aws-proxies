@@ -53,7 +53,7 @@ class AWSEC2Interface(object):
 
         self.config = {
             "vpcs": {},
-            "instance_types": []
+            "instance_groups": []
         }
 
     def __setup_logger(self):
@@ -681,16 +681,16 @@ class AWSEC2Interface(object):
             "\\", "").format(instance_index, 0) + subnet_suffix
         return subnet_cidr_block
 
-    def bootstrap_instances_infrastucture(self, instance_types_config):
-        created_instance_types_config = self.setup_instance_types_config(
-            instance_types_config)
+    def bootstrap_instances_infrastucture(self, instances_groups_config):
+        created_instances_groups_config = self.setup_instances_groups_config(
+            instances_groups_config)
 
-        self.config["instance_types"].append(created_instance_types_config)
+        self.config["instance_groups"].append(created_instances_groups_config)
 
         self.check_image_virtualization_against_instance_types(
-            self.config["instance_types"])
+            self.config["instance_groups"])
 
-        tmp_vpcs_config = self.build_tmp_vpcs_config(instance_types_config)
+        tmp_vpcs_config = self.build_tmp_vpcs_config(instances_groups_config)
 
         # Create VPCS Infrastructure
         self.bootstrap_vpcs_infrastructure([tmp_vpcs_config])
@@ -698,7 +698,7 @@ class AWSEC2Interface(object):
         # Create network interfaces
         self.create_network_interfaces(self.config["vpcs"])
 
-    def setup_instance_types_config(self, instances_config):
+    def setup_instances_groups_config(self, instances_config):
         created_instance_type_config = []
         for instance_config in instances_config:
             if "ImageName" in instance_config:
@@ -788,14 +788,14 @@ class AWSEC2Interface(object):
 
             return created_instance_type_config
 
-    def check_image_virtualization_against_instance_types(self, instance_types_config):
+    def check_image_virtualization_against_instance_types(self, instances_groups_config):
         """Check that an image is supported by instance type
 
         Args:
             image_id (string): Image type
             instance_type (string): Instance type
         """
-        for instance_type_config in instance_types_config:
+        for instance_type_config in instances_groups_config:
             try:
                 virtualization_type = self.ec2.Image(
                     instance_type_config["ImageId"]).virtualization_type
@@ -813,17 +813,17 @@ class AWSEC2Interface(object):
                 raise ValueError("Error message {0}".format(e.message))
                 break
 
-    def build_tmp_vpcs_config(self, instance_types_config):
+    def build_tmp_vpcs_config(self, instances_groups_config):
         """Build a temporary vpcs config schema
 
         Args:
-            instance_types_config (dict): Instance types config
+            instances_groups_config (dict): Instance types config
 
         Returns:
             dict: temporary vpcs config
         """
         tmp_vpcs_config = {}
-        for instance_type in instance_types_config:
+        for instance_type in instances_groups_config:
 
             if "VPCCidrBlock" not in instance_type:
                 self.logger.error(

@@ -3,9 +3,9 @@
 AWS_CONFIG_FILE = './config/aws_resources.json'
 AWS_TAG_NAME_BASE = 'symaps-prod-proxies'
 PROXY_NODES_COUNT = 4
-AWS_INSTANCE_TYPES = [
+AWS_INSTANCES_GROUPS_CONFIG = [
     {
-        'InstanceType': 't2.nano',
+        'InstanceType': 't1.micro',
         'ImageName': 'tinyproxy',
         'VPCCidrBlock': '15.0.0.0/16',
         'CidrBlockFormatting': '15.0.\{0\}.\{1\}',
