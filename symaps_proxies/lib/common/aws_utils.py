@@ -826,14 +826,10 @@ class AWSEC2Interface(object):
         for instance_type in instances_groups_config:
 
             if "VPCCidrBlock" not in instance_type:
-                self.logger.error(
-                    "ERROR: The instance type config need to have a VPCCidrBlock property")
-                sys.exit()
+                raise ValueError("The instance type config need to have a VPCCidrBlock property")
 
             if "SecurityGroups" not in instance_type:
-                self.logger.error(
-                    "ERROR: The instance type config need to have a SecurityGroups property")
-                sys.exit()
+                raise ValueError("The instance type config need to have a VPCCidrBlock property")
 
             tmp_vpcs_config = {
                 "CidrBlock": instance_type["VPCCidrBlock"],
