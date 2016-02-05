@@ -823,7 +823,8 @@ class AWSEC2Interface(object):
                 prefix_instance_type = instance_type_config["InstanceType"][:2]
 
                 if ((virtualization_type == "hvm" and prefix_instance_type not in self.hvm_only_instance_types) or
-                        (virtualization_type == "paravirtual" and prefix_instance_type in self.hvm_only_instance_types)):
+                        (virtualization_type == "paravirtual" and
+                            prefix_instance_type in self.hvm_only_instance_types)):
                     raise Exception(
                         "The image {0} with virtualization {1} is not supported by instance type {2}".format(
                             instance_type_config["ImageId"],
