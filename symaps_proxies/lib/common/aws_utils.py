@@ -158,29 +158,28 @@ class AWSEC2Interface(object):
         i = "%02d" % (int(index) + 1,)
         return suffix + "-" + i
 
-    def create_name_tag_for_resource(self, resource, tag_name_base, suffix=""):
-        """Create a name tag for a EC2 resource using a suffix if passed
+    def bootstrap_instances_infrastucture(self, instances_groups_config):
+        created_instances_groups_config = self.setup_instances_groups_config(
+            instances_groups_config)
 
-        Args:
-            resource (object): EC2 resource
-            tag_name_base (string): Base name tag value
-            suffix (str, optional): Suffix
-        """
-        tag_name = {
-            "Key": "Name",
-            "Value": tag_name_base
-        }
+        self.config["instances_groups"].append(created_instances_groups_config)
 
-        if suffix:
-            tag_name["Value"] = tag_name["Value"] + "-" + suffix
+        self.check_image_virtualization_against_instance_types(
+            self.config["instances_groups"])
 
-        resource.create_tags(
-            Tags=[tag_name]
-        )
+        tmp_vpcs_config = self.build_tmp_vpcs_config(instances_groups_config)
 
-    def tag_with_name_with_suffix(self, resource, type, index, tag_base_name):
-        suffix = self.create_suffix(type, index)
-        self.create_name_tag_for_resource(resource, tag_base_name, suffix)
+        # Create VPCS Infrastructure
+        self.bootstrap_vpcs_infrastructure([tmp_vpcs_config])
+
+        # Create network interfaces
+        self.create_network_interfaces(self.config["vpcs"])
+
+        # Associate ips to elastic network interfaces
+        self.associate_public_ips_to_enis()
+
+        # Create instances
+        self.create_instances(self.config['instances_groups'], self.config["vpcs"])
 
     def bootstrap_vpcs_infrastructure(self, vpcs):
         """Bootstrap Vpcs infrastructure
@@ -215,6 +214,30 @@ class AWSEC2Interface(object):
         network_acls = self.get_or_create_network_acls(self.config["vpcs"])
         self.config["vpcs"] = self.merge_config(
             self.config["vpcs"], network_acls)
+
+    def create_name_tag_for_resource(self, resource, tag_name_base, suffix=""):
+        """Create a name tag for a EC2 resource using a suffix if passed
+
+        Args:
+            resource (object): EC2 resource
+            tag_name_base (string): Base name tag value
+            suffix (str, optional): Suffix
+        """
+        tag_name = {
+            "Key": "Name",
+            "Value": tag_name_base
+        }
+
+        if suffix:
+            tag_name["Value"] = tag_name["Value"] + "-" + suffix
+
+        resource.create_tags(
+            Tags=[tag_name]
+        )
+
+    def tag_with_name_with_suffix(self, resource, type, index, tag_base_name):
+        suffix = self.create_suffix(type, index)
+        self.create_name_tag_for_resource(resource, tag_base_name, suffix)
 
     def get_or_create_vpcs(self, vpcs):
         """Get or create AWS vpcs
@@ -693,29 +716,6 @@ class AWSEC2Interface(object):
         vpc_gateway_ip = cidr_block_formatting.replace(
             "\\", "").format(0, 1)
         return vpc_gateway_ip
-
-    def bootstrap_instances_infrastucture(self, instances_groups_config):
-        created_instances_groups_config = self.setup_instances_groups_config(
-            instances_groups_config)
-
-        self.config["instances_groups"].append(created_instances_groups_config)
-
-        self.check_image_virtualization_against_instance_types(
-            self.config["instances_groups"])
-
-        tmp_vpcs_config = self.build_tmp_vpcs_config(instances_groups_config)
-
-        # Create VPCS Infrastructure
-        self.bootstrap_vpcs_infrastructure([tmp_vpcs_config])
-
-        # Create network interfaces
-        self.create_network_interfaces(self.config["vpcs"])
-
-        # Associate ips to elastic network interfaces
-        self.associate_public_ips_to_enis()
-
-        # Create instances
-        self.create_instances(self.config['instances_groups'], self.config["vpcs"])
 
     def setup_instances_groups_config(self, instances_config):
         created_instance_type_config = []
