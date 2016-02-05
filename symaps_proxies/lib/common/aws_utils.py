@@ -681,6 +681,19 @@ class AWSEC2Interface(object):
             "\\", "").format(instance_index, 0) + subnet_suffix
         return subnet_cidr_block
 
+    def get_vpc_gateway_ip(self, cidr_block_formatting):
+        """Get vpc gateway IP
+
+        Args:
+            cidr_block_formatting (string): Cidr block formating
+
+        Returns:
+            string: Vpc gateway ip
+        """
+        vpc_gateway_ip = cidr_block_formatting.replace(
+            "\\", "").format(0, 1)
+        return vpc_gateway_ip
+
     def bootstrap_instances_infrastucture(self, instances_groups_config):
         created_instances_groups_config = self.setup_instances_groups_config(
             instances_groups_config)
@@ -757,7 +770,9 @@ class AWSEC2Interface(object):
             for i in range(0, instance_per_type_count):
                 instance_config["Instances"].append({
                     "NetworkInterfaces": [],
-                    "CidrBlock": subnet_cidr_block
+                    "CidrBlock": subnet_cidr_block,
+                    "SubnetCidrSuffix": subnet_cidr_suffix,
+                    'GatewayIP': self.get_vpc_gateway_ip(instance_config["CidrBlockFormatting"])
                 })
                 for j in range(0, instance_enis_count):
                     if possible_ips_remaining / instance_eni_private_ips_count > 1:
@@ -963,7 +978,6 @@ class AWSEC2Interface(object):
                     'ImageId': instance_group['ImageId'],
                     'MinCount': 1,
                     'MaxCount': 1,
-                    'KeyName': 'tmp-david',
                     'InstanceType': instance_group['InstanceType'],
                     'DisableApiTermination': False,
                     'InstanceInitiatedShutdownBehavior': 'terminate',
@@ -987,8 +1001,8 @@ class AWSEC2Interface(object):
                     for private_ip_address in found_eni[0].private_ip_addresses:
                         if not private_ip_address['Primary']:
                             user_data += "\n# Add the primary ip address to the network interface\n"
-                            user_data += "sudo ip addr add {0}/28 dev eth{1}\n".format(
-                                private_ip_address['PrivateIpAddress'], index
+                            user_data += "sudo ip addr add {0}{1} dev eth{2}\n".format(
+                                private_ip_address['PrivateIpAddress'], instance['SubnetCidrSuffix'], index
                             )
                         if index > 0:
                             user_data += "\n# Add an ip rule to a routing table\n"
@@ -999,10 +1013,10 @@ class AWSEC2Interface(object):
 
                     if index > 0:
                         user_data += "\n# Add a route\n"
-                        user_data += "sudo ip route add default via 15.0.0.1 dev eth{0} table eth{0}_rt\n".format(index)
+                        user_data += "sudo ip route add default via {0} dev " \
+                            "eth{1} table eth{1}_rt\n".format(instance['GatewayIP'], index)
 
                 instance_config['UserData'] = user_data
-                print user_data
 
                 aws_reservation = self.ec2_client.run_instances(**instance_config)
                 aws_instance_config = aws_reservation['Instances'][0]
