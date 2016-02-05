@@ -954,11 +954,9 @@ class AWSEC2Interface(object):
         Args:
             instances_groups_config (dict): Instances groups config
             vpcs_config (dict): Vpcs config
-
-        Returns:
-            TYPE: Description
         """
         instances_config = []
+        user_data = "#!/bin/bash\n"
         for instance_group in instances_groups_config:
             for instance_index, instance in enumerate(instance_group['Instances']):
                 instance_config = {
@@ -979,6 +977,32 @@ class AWSEC2Interface(object):
                             'NetworkInterfaceId': found_eni[0].id,
                             'DeviceIndex': index
                         })
+
+                    if index > 0:
+                        user_data += "\n\nsudo bash -c \"echo 'auto eth{0}' >> /etc/network/interfaces\"\n" \
+                            "sudo bash -c \"echo 'iface eth{0} inet dhcp' >> /etc/network/interfaces\"\n" \
+                            "sudo ifup eth{0}\n" \
+                            "sudo bash -c \"echo '40{0} eth{0}_rt' >> /etc/iproute2/rt_tables\"\n".format(index)
+
+                    for private_ip_address in found_eni[0].private_ip_addresses:
+                        if not private_ip_address['Primary']:
+                            user_data += "\n# Add the primary ip address to the network interface\n"
+                            user_data += "sudo ip addr add {0}/28 dev eth{1}\n".format(
+                                private_ip_address['PrivateIpAddress'], index
+                            )
+                        if index > 0:
+                            user_data += "\n# Add an ip rule to a routing table\n"
+                            user_data += "sudo ip rule add from {0} lookup eth{1}_rt\n".format(
+                                private_ip_address['PrivateIpAddress'],
+                                index
+                            )
+
+                    if index > 0:
+                        user_data += "\n# Add a route\n"
+                        user_data += "sudo ip route add default via 15.0.0.1 dev eth{0} table eth{0}_rt\n".format(index)
+
+                instance_config['UserData'] = user_data
+                print user_data
 
                 aws_reservation = self.ec2_client.run_instances(**instance_config)
                 aws_instance_config = aws_reservation['Instances'][0]
