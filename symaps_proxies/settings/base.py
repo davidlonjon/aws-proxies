@@ -16,8 +16,8 @@ AWS_INSTANCES_GROUPS_CONFIG = [
                 'IngressRules': [
                     {
                         'IpProtocol': 'tcp',
-                        'FromPort': 8000,
-                        'ToPort': 8000,
+                        'FromPort': 8888,
+                        'ToPort': 8888,
                         'IpRanges': [
                             {
                                 'CidrIp': '0.0.0.0/0'
