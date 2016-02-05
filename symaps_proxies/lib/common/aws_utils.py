@@ -53,7 +53,7 @@ class AWSEC2Interface(object):
 
         self.config = {
             "vpcs": {},
-            "instance_groups": []
+            "instances_groups": []
         }
 
     def __setup_logger(self):
@@ -685,10 +685,10 @@ class AWSEC2Interface(object):
         created_instances_groups_config = self.setup_instances_groups_config(
             instances_groups_config)
 
-        self.config["instance_groups"].append(created_instances_groups_config)
+        self.config["instances_groups"].append(created_instances_groups_config)
 
         self.check_image_virtualization_against_instance_types(
-            self.config["instance_groups"])
+            self.config["instances_groups"])
 
         tmp_vpcs_config = self.build_tmp_vpcs_config(instances_groups_config)
 
