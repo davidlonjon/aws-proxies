@@ -698,6 +698,12 @@ class AWSEC2Interface(object):
         # Create network interfaces
         self.create_network_interfaces(self.config["vpcs"])
 
+        # Associate ips to elastic network interfaces
+        self.associate_public_ips_to_enis()
+
+        # Create instances
+        self.create_instances(self.config['instances_groups'], self.config["vpcs"])
+
     def setup_instances_groups_config(self, instances_config):
         created_instance_type_config = []
         for instance_config in instances_config:
@@ -898,6 +904,90 @@ class AWSEC2Interface(object):
                                      eni["uid"],
                                      subnet["SubnetId"]
                                      )
+
+    def associate_public_ips_to_enis(self):
+        """Associate public ips to elastic network interfaces
+        """
+        aws_enis = list(
+            self.ec2.network_interfaces.filter(
+                Filters=[
+                    {
+                        "Name": "tag:Name",
+                        "Values": [self.tag_name_base + '-*']
+                    }
+                ]
+            )
+        )
+
+        for aws_eni in aws_enis:
+            for aws_private_ip_address in aws_eni.private_ip_addresses:
+                msg = "The network interface '{0}' private ip '{1}' has been or is already" \
+                    " associated with public ip '{2}'"
+
+                if 'Association' not in aws_private_ip_address:
+                    aws_eip_alloc = self.ec2_client.allocate_address(
+                        Domain='vpc'
+                    )
+                    self.ec2_client.associate_address(
+                        AllocationId=aws_eip_alloc['AllocationId'],
+                        NetworkInterfaceId=aws_eni.id,
+                        PrivateIpAddress=aws_private_ip_address['PrivateIpAddress']
+                    )
+
+                    msg = msg.format(
+                        aws_eni.id,
+                        aws_private_ip_address['PrivateIpAddress'],
+                        aws_eip_alloc['PublicIp']
+                    )
+                else:
+                    msg = msg.format(
+                        aws_eni.id,
+                        aws_private_ip_address['PrivateIpAddress'],
+                        aws_private_ip_address['Association']['PublicIp']
+                    )
+
+                self.logger.info(msg)
+
+    def create_instances(self, instances_groups_config, vpcs_config):
+        """Create instances
+
+        Args:
+            instances_groups_config (dict): Instances groups config
+            vpcs_config (dict): Vpcs config
+
+        Returns:
+            TYPE: Description
+        """
+        instances_config = []
+        for instance_group in instances_groups_config:
+            for instance_index, instance in enumerate(instance_group['Instances']):
+                instance_config = {
+                    'ImageId': instance_group['ImageId'],
+                    'MinCount': 1,
+                    'MaxCount': 1,
+                    'KeyName': 'tmp-david',
+                    'InstanceType': instance_group['InstanceType'],
+                    'DisableApiTermination': False,
+                    'InstanceInitiatedShutdownBehavior': 'terminate',
+                    'NetworkInterfaces': [],
+                }
+
+                for index, eni in enumerate(instance['NetworkInterfaces']):
+                    found_eni = self.filter_resources(self.ec2.network_interfaces, "tag-value", eni["uid"])
+                    if found_eni:
+                        instance_config['NetworkInterfaces'].append({
+                            'NetworkInterfaceId': found_eni[0].id,
+                            'DeviceIndex': index
+                        })
+
+                aws_reservation = self.ec2_client.run_instances(**instance_config)
+                aws_instance_config = aws_reservation['Instances'][0]
+                aws_instance = self.ec2.Instance(aws_instance_config['InstanceId'])
+                self.tag_with_name_with_suffix(aws_instance, "i", instance_index, self.tag_name_base)
+                instance_config['InstanceId'] = aws_instance_config['InstanceId']
+                instances_config.append(instance_config)
+
+        return instances_config
 
     # Taken from:
     # http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
