@@ -7,7 +7,7 @@ import sys
 import settings
 
 
-class AWSEC2Interface(object):
+class AWSProxies(object):
 
     def __init__(self, profile, **kwargs):
         """Constructor

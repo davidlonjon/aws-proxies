@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import lib.common.aws_utils as aws
+from aws_proxies import AWSProxies
 import logging
 import settings
 import sys
@@ -38,7 +38,7 @@ def main():
     logger = setup_logger()
 
     try:
-        AWSEC2Interface = aws.AWSEC2Interface(
+        proxies = AWSProxies(
             profile='david_dev',
             proxy_nodes_count=settings.PROXY_NODES_COUNT,
         )
@@ -47,7 +47,7 @@ def main():
         sys.exit()
 
     # Create Instances Infrastructure
-    AWSEC2Interface.bootstrap_instances_infrastucture(settings.INSTANCES_GROUPS_CONFIG)
+    proxies.bootstrap_instances_infrastucture(settings.INSTANCES_GROUPS_CONFIG)
 
 if __name__ == "__main__":
     main()
