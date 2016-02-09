@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
 import boto3
-from utils import setup_logger
+from utils import setup_logger, create_suffix
 import math
 import sys
 import settings
@@ -85,19 +85,6 @@ class AWSProxies(object):
                 new_conf[key] = self.merge_dicts(conf1[key], value)
 
         return new_conf
-
-    def create_suffix(self, suffix, index):
-        """Create suffix using an index
-
-        Args:
-            suffix (string): Base suffix
-            index (int/string): Index
-
-        Returns:
-            string: Suffic
-        """
-        i = "%02d" % (int(index) + 1,)
-        return suffix + "-" + i
 
     def bootstrap_instances_infrastucture(self, instances_groups_config):
 
@@ -195,7 +182,7 @@ class AWSProxies(object):
         )
 
     def tag_with_name_with_suffix(self, resource, type, index, tag_base_name):
-        suffix = self.create_suffix(type, index)
+        suffix = create_suffix(type, index)
         self.create_name_tag_for_resource(resource, tag_base_name, suffix)
 
     def get_or_create_vpcs(self, vpcs):
