@@ -160,16 +160,10 @@ class AWSEC2Interface(object):
 
     def bootstrap_instances_infrastucture(self, instances_groups_config):
 
-        self.release_public_ips()
-        self.terminate_instances()
-        self.delete_enis()
-        self.delete_security_groups()
-        self.delete_subnets()
-        self.delete_route_tables()
-        self.delete_network_acls()
-        self.delete_internet_gateways()
-        self.delete_vpcs()
+        # Delete the proxies infrastructure first
+        self.delete_proxies_infrastructure()
 
+        # Setup proxies infrastructure config
         created_instances_groups_config = self.setup_instances_groups_config(
             instances_groups_config)
 
@@ -225,6 +219,19 @@ class AWSEC2Interface(object):
         network_acls = self.get_or_create_network_acls(self.config["vpcs"])
         self.config["vpcs"] = self.merge_config(
             self.config["vpcs"], network_acls)
+
+    def delete_proxies_infrastructure(self):
+        """Delete proxies infrastructure
+        """
+        self.release_public_ips()
+        self.terminate_instances()
+        self.delete_enis()
+        self.delete_security_groups()
+        self.delete_subnets()
+        self.delete_route_tables()
+        self.delete_network_acls()
+        self.delete_internet_gateways()
+        self.delete_vpcs()
 
     def create_name_tag_for_resource(self, resource, tag_name_base, suffix=""):
         """Create a name tag for a EC2 resource using a suffix if passed
