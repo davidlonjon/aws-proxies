@@ -168,6 +168,7 @@ class AWSEC2Interface(object):
         self.delete_route_tables()
         self.delete_network_acls()
         self.delete_internet_gateways()
+        self.delete_vpcs()
 
         created_instances_groups_config = self.setup_instances_groups_config(
             instances_groups_config)
@@ -285,22 +286,20 @@ class AWSEC2Interface(object):
 
     def delete_vpcs(self):
         """Delete VPCs
-
-        Args:
-            vpcs (dict): Vpcs config
         """
-        for vpc_id, vpc in vpcs.iteritems():
-            found_vpcs = self.filter_resources(
-                self.ec2.vpcs, "cidrBlock", vpc["CidrBlock"])
+        vpcs = self.filter_resources(
+            self.ec2.vpcs,
+            "tag:Name",
+            self.tag_name_base + '-*'
+        )
 
-            if found_vpcs:
-                for found_vpc in found_vpcs:
-                    self.ec2.Vpc(found_vpc.id).delete()
-                    self.logger.error("The vpc with ID '%s' has been deleted",
-                                      found_vpc.id
-                                      )
-            else:
-                self.logger.error("No vpc(s) were deleted")
+        for vpc in vpcs:
+            vpc.delete()
+
+            self.logger.info(
+                "The vpc with ID '%s' has been deleted ",
+                vpc.id,
+            )
 
     def get_or_create_internet_gateways(self, vpcs):
         """Get or create internet gateways
