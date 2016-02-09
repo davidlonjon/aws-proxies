@@ -4,7 +4,7 @@ from utils import setup_logger, filter_resources, tag_with_name_with_suffix
 
 
 class Subnets(object):
-    """VPCS representation
+    """Subnets representation
     """
 
     def __init__(self, ec2, tag_base_name):
@@ -25,7 +25,7 @@ class Subnets(object):
             config (dict): Vpcs config
 
         Returns:
-            dict: subnets configs
+            dict: Subnets configs
         """
         created_subnets = []
         for vpc_id, vpc_config in config.iteritems():
