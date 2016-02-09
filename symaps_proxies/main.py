@@ -40,7 +40,7 @@ def main():
 
     try:
         AWSEC2Interface = aws.AWSEC2Interface(
-            'david_dev',
+            profile='david_dev',
             eni_mappings=settings.AWS_ENI_MAPPINGS,
             cidr_suffix_ips_number_mapping=settings.CIDR_SUFFIX_IPS_NUMBER_MAPPING,
             proxy_nodes_count=settings.PROXY_NODES_COUNT,
@@ -53,10 +53,6 @@ def main():
 
     # Create Instances Infrastructure
     AWSEC2Interface.bootstrap_instances_infrastucture(settings.AWS_INSTANCES_GROUPS_CONFIG)
-
-    # print AWSEC2Interface.config
-    with open(settings.AWS_CONFIG_FILE, 'w') as fp:
-        print json.dump(AWSEC2Interface.config, fp)
 
 if __name__ == "__main__":
     main()

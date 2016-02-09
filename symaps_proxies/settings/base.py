@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-AWS_CONFIG_FILE = './config/aws_resources.json'
 AWS_TAG_NAME_BASE = 'symaps-prod-proxies'
 PROXY_NODES_COUNT = 4
 AWS_INSTANCES_GROUPS_CONFIG = [
