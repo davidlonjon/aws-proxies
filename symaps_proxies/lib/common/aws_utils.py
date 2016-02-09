@@ -163,6 +163,8 @@ class AWSEC2Interface(object):
         self.release_public_ips()
         self.terminate_instances()
         self.delete_enis()
+        self.delete_route_tables()
+        self.delete_network_acls()
 
         created_instances_groups_config = self.setup_instances_groups_config(
             instances_groups_config)
@@ -548,6 +550,55 @@ class AWSEC2Interface(object):
             }
         }
 
+    def delete_route_tables(self):
+        """Delete route tables
+        """
+        route_tables = self.filter_resources(
+            self.ec2.route_tables,
+            "tag:Name",
+            self.tag_name_base + '-*'
+        )
+
+        for route_table in route_tables:
+            is_main_route_table = True
+            if hasattr(route_table, 'associations'):
+                for association in route_table.associations.all():
+                    if not association.main:
+                        is_main_route_table = False
+                        self.ec2_client.disassociate_route_table(
+                            AssociationId=association.id
+                        )
+
+                        self.logger.info(
+                            "The route table association with ID '%s' has been deleted",
+                            association.id,
+                        )
+
+            for route in route_table.routes:
+                if 'local' != route['GatewayId']:
+                    self.ec2_client.delete_route(
+                        RouteTableId=route_table.id,
+                        DestinationCidrBlock=route['DestinationCidrBlock']
+                    )
+
+                    self.logger.info(
+                        "The route for gateway ID '%s' with cird block '%s' and " +
+                        "associated to route table '%s' has been deleted",
+                        route['GatewayId'],
+                        route['DestinationCidrBlock'],
+                        route_table.id
+                    )
+
+            if not is_main_route_table:
+                self.ec2_client.delete_route_table(
+                    RouteTableId=route_table.id
+                )
+
+                self.logger.info(
+                    "The route table with ID '%s' has been deleted",
+                    route_table.id
+                )
+
     def associate_subnets_to_routes(self, vpcs):
         """Associate subnets to routes
 
@@ -586,6 +637,21 @@ class AWSEC2Interface(object):
                                 DestinationCidrBlock="0.0.0.0/0",
                                 GatewayId=ig["InternetGatewayId"],
                             )
+
+    def delete_network_acls(self):
+        """Delete network acls
+        """
+        network_acls = self.filter_resources(
+            self.ec2.network_acls,
+            "tag:Name",
+            self.tag_name_base + '-*'
+        )
+
+        for network_acl in network_acls:
+            if not network_acl.is_default:
+                self.ec2_client.delete_network_acl(
+                    NetworkAclId=network_acl.id
+                )
 
     def get_or_create_network_acls(self, vpcs):
         """Get or create network acls
