@@ -163,10 +163,11 @@ class AWSEC2Interface(object):
         self.release_public_ips()
         self.terminate_instances()
         self.delete_enis()
-        self.delete_route_tables()
-        self.delete_network_acls()
         self.delete_security_groups()
         self.delete_subnets()
+        self.delete_route_tables()
+        self.delete_network_acls()
+        self.delete_internet_gateways()
 
         created_instances_groups_config = self.setup_instances_groups_config(
             instances_groups_config)
@@ -282,7 +283,7 @@ class AWSEC2Interface(object):
 
         return created_resources
 
-    def delete_vpcs(self, vpcs):
+    def delete_vpcs(self):
         """Delete VPCs
 
         Args:
@@ -358,6 +359,27 @@ class AWSEC2Interface(object):
                 "InternetGateways": created_resources
             }
         }
+
+    def delete_internet_gateways(self):
+        """Delete internet gateways
+        """
+        internet_gateways = self.filter_resources(
+            self.ec2.internet_gateways,
+            "tag:Name",
+            self.tag_name_base + '-*'
+        )
+
+        for internet_gateway in internet_gateways:
+            if hasattr(internet_gateway, 'attachments'):
+                for attachment in internet_gateway.attachments:
+                    internet_gateway.detach_from_vpc(VpcId=attachment['VpcId'])
+
+            internet_gateway.delete()
+
+            self.logger.info(
+                "The internet_gateway with ID '%s' has been deleted ",
+                internet_gateway.id,
+            )
 
     def get_or_create_subnets(self, vpcs):
         """Get or create subnets
