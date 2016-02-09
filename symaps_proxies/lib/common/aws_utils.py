@@ -161,6 +161,9 @@ class AWSEC2Interface(object):
     def bootstrap_instances_infrastucture(self, instances_groups_config):
 
         self.release_public_ips()
+        self.terminate_instances()
+        self.delete_enis()
+
         created_instances_groups_config = self.setup_instances_groups_config(
             instances_groups_config)
 
@@ -181,7 +184,7 @@ class AWSEC2Interface(object):
         self.associate_public_ips_to_enis()
 
         # Create instances
-        # self.create_instances(self.config['instances_groups'], self.config["vpcs"])
+        self.create_instances(self.config['instances_groups'], self.config["vpcs"])
 
     def bootstrap_vpcs_infrastructure(self, vpcs):
         """Bootstrap Vpcs infrastructure
@@ -1001,6 +1004,65 @@ class AWSEC2Interface(object):
                 aws_public_ip['NetworkInterfaceId']
             )
 
+    def delete_enis(self):
+        """Delete elastic network interfaces
+        """
+        aws_enis = self.filter_resources(
+            self.ec2.network_interfaces, "tag:Name", self.tag_name_base + '-*')
+
+        for aws_eni in aws_enis:
+            if hasattr(aws_eni, 'attachment') and aws_eni.attachment is not None:
+                print aws_eni.attachment
+                self.ec2_client.detach_network_interface(
+                    AttachmentId=aws_eni.attachment['AttachmentId'],
+                )
+
+            self.ec2_client.delete_network_interface(
+                NetworkInterfaceId=aws_eni.id
+            )
+
+            self.logger.info(
+                "The network interface '%s' has been detached from instance and deleted",
+                aws_eni.id
+            )
+
+    def terminate_instances(self):
+        """Terminate instances
+        """
+        aws_instances_ids = []
+        aws_instances = self.ec2.instances.filter(Filters=[
+            {
+                "Name": "tag:Name",
+                "Values": [self.tag_name_base + '-*']
+            },
+            {
+                "Name": "instance-state-name",
+                "Values": ['pending', 'running', 'shutting-down', 'stopping', 'stopped']
+            },
+        ])
+
+        for aws_instance in aws_instances:
+            aws_instances_ids.append(aws_instance.id)
+
+        aws_instances_ids_str = str(aws_instances_ids).strip('[]')
+        if aws_instances_ids:
+            self.logger.info(
+                "Terminating instances %s. Please wait",
+                aws_instances_ids_str
+            )
+
+            self.ec2_client.terminate_instances(
+                InstanceIds=aws_instances_ids
+            )
+
+            waiter = self.ec2_client.get_waiter('instance_terminated')
+            waiter.wait(InstanceIds=aws_instances_ids)
+
+            self.logger.info(
+                "Instances %s are now terminated",
+                aws_instances_ids_str
+            )
+
     def create_instances(self, instances_groups_config, vpcs_config):
         """Create instances
 
@@ -1110,3 +1172,4 @@ class AWSEC2Interface(object):
         }]
 
         return list(function.filter(Filters=filters))
+
