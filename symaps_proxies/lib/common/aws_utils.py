@@ -166,6 +166,7 @@ class AWSEC2Interface(object):
         self.delete_route_tables()
         self.delete_network_acls()
         self.delete_security_groups()
+        self.delete_subnets()
 
         created_instances_groups_config = self.setup_instances_groups_config(
             instances_groups_config)
@@ -406,6 +407,21 @@ class AWSEC2Interface(object):
         }
 
         return created_resources
+
+    def delete_subnets(self):
+        subnets = self.filter_resources(
+            self.ec2.subnets,
+            "tag:Name",
+            self.tag_name_base + '-*'
+        )
+
+        for subnet in subnets:
+            subnet.delete()
+
+            self.logger.info(
+                "The subnet with ID '%s' has been deleted ",
+                subnet.id,
+            )
 
     def get_or_create_security_groups(self, vpcs):
         """Get or create security groups
