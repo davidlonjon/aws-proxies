@@ -3,7 +3,7 @@ from __future__ import division
 import boto3
 import math
 import settings
-from utils import setup_logger, create_suffix, merge_config
+from utils import setup_logger, create_suffix, merge_config, filter_resources
 
 
 class AWSProxies(object):
@@ -168,7 +168,7 @@ class AWSProxies(object):
 
         created_resources = {}
         for index, vpc in enumerate(vpcs):
-            found_resources = self.filter_resources(
+            found_resources = filter_resources(
                 self.ec2.vpcs, "cidrBlock", vpc["CidrBlock"])
 
             if not found_resources:
@@ -192,7 +192,7 @@ class AWSProxies(object):
     def delete_vpcs(self):
         """Delete VPCs
         """
-        vpcs = self.filter_resources(
+        vpcs = filter_resources(
             self.ec2.vpcs,
             "tag:Name",
             self.tag_name_base + '-*'
@@ -220,7 +220,7 @@ class AWSProxies(object):
         index = 0
         for vpc_id, vpc in vpcs.iteritems():
             if "CreateInternetGateway" in vpc:
-                found_resources = self.filter_resources(
+                found_resources = filter_resources(
                     self.ec2.internet_gateways, "attachment.vpc-id", vpc["VpcId"])
 
                 if not found_resources:
@@ -267,7 +267,7 @@ class AWSProxies(object):
     def delete_internet_gateways(self):
         """Delete internet gateways
         """
-        internet_gateways = self.filter_resources(
+        internet_gateways = filter_resources(
             self.ec2.internet_gateways,
             "tag:Name",
             self.tag_name_base + '-*'
@@ -298,7 +298,7 @@ class AWSProxies(object):
         for vpc_id, vpc in vpcs.iteritems():
             if "Subnets" in vpc:
                 for index, subnet in enumerate(vpc["Subnets"]):
-                    found_resources = self.filter_resources(
+                    found_resources = filter_resources(
                         self.ec2.subnets, "cidrBlock", subnet["CidrBlock"])
 
                     if not found_resources:
@@ -335,7 +335,7 @@ class AWSProxies(object):
         return created_resources
 
     def delete_subnets(self):
-        subnets = self.filter_resources(
+        subnets = filter_resources(
             self.ec2.subnets,
             "tag:Name",
             self.tag_name_base + '-*'
@@ -362,7 +362,7 @@ class AWSProxies(object):
         for vpc_id, vpc in vpcs.iteritems():
             if "SecurityGroups" in vpc:
                 for index, sg in enumerate(vpc["SecurityGroups"]):
-                    found_resources = self.filter_resources(
+                    found_resources = filter_resources(
                         self.ec2.security_groups, "vpc-id", vpc["VpcId"])
 
                     if not found_resources:
@@ -411,7 +411,7 @@ class AWSProxies(object):
     def delete_security_groups(self):
         """Delete security groups
         """
-        security_groups = self.filter_resources(
+        security_groups = filter_resources(
             self.ec2.security_groups,
             "tag:Name",
             self.tag_name_base + '-*'
@@ -475,7 +475,7 @@ class AWSProxies(object):
         created_resources = []
         index = 0
         for vpc_id, vpc in vpcs.iteritems():
-            found_resources = self.filter_resources(
+            found_resources = filter_resources(
                 self.ec2.route_tables, "vpc-id", vpc_id)
 
             if not found_resources:
@@ -509,7 +509,7 @@ class AWSProxies(object):
     def delete_route_tables(self):
         """Delete route tables
         """
-        route_tables = self.filter_resources(
+        route_tables = filter_resources(
             self.ec2.route_tables,
             "tag:Name",
             self.tag_name_base + '-*'
@@ -566,7 +566,7 @@ class AWSProxies(object):
                 route_resource = self.ec2.RouteTable(route["RouteTableId"])
 
                 for subnet in vpc["Subnets"]:
-                    found_associations = self.filter_resources(
+                    found_associations = filter_resources(
                         self.ec2.route_tables, "association.subnet-id", subnet["SubnetId"])
                     if not found_associations:
                         route_resource.associate_with_subnet(
@@ -597,7 +597,7 @@ class AWSProxies(object):
     def delete_network_acls(self):
         """Delete network acls
         """
-        network_acls = self.filter_resources(
+        network_acls = filter_resources(
             self.ec2.network_acls,
             "tag:Name",
             self.tag_name_base + '-*'
@@ -621,7 +621,7 @@ class AWSProxies(object):
         created_resources = []
         index = 0
         for vpc_id, vpc in vpcs.iteritems():
-            found_resources = self.filter_resources(
+            found_resources = filter_resources(
                 self.ec2.network_acls, "vpc-id", vpc_id)
 
             if not found_resources:
@@ -925,7 +925,7 @@ class AWSProxies(object):
             for subnet in vpc["Subnets"]:
                 aws_subnet = self.ec2.Subnet(subnet["SubnetId"])
                 for eni in subnet["NetworkInterfaces"]:
-                    found_eni = self.filter_resources(
+                    found_eni = filter_resources(
                         aws_subnet.network_interfaces, "tag-value", eni["uid"])
                     if not found_eni:
                         created_eni = aws_subnet.create_network_interface(
@@ -994,7 +994,7 @@ class AWSProxies(object):
     def release_public_ips(self):
         """Dissociate public ips to elastic network interfaces and release ips
         """
-        aws_enis = self.filter_resources(
+        aws_enis = filter_resources(
             self.ec2.network_interfaces, "tag:Name", self.tag_name_base + '-*')
 
         eni_ids = []
@@ -1029,7 +1029,7 @@ class AWSProxies(object):
     def delete_enis(self):
         """Delete elastic network interfaces
         """
-        aws_enis = self.filter_resources(
+        aws_enis = filter_resources(
             self.ec2.network_interfaces, "tag:Name", self.tag_name_base + '-*')
 
         for aws_eni in aws_enis:
@@ -1107,7 +1107,7 @@ class AWSProxies(object):
                 }
 
                 for index, eni in enumerate(instance['NetworkInterfaces']):
-                    found_eni = self.filter_resources(self.ec2.network_interfaces, "tag-value", eni["uid"])
+                    found_eni = filter_resources(self.ec2.network_interfaces, "tag-value", eni["uid"])
                     if found_eni:
                         instance_config['NetworkInterfaces'].append({
                             'NetworkInterfaceId': found_eni[0].id,
@@ -1148,16 +1148,3 @@ class AWSProxies(object):
                 instances_config.append(instance_config)
 
         return instances_config
-
-    def filter_resources(self, function, filter_name, filter_value):
-        values = [filter_value]
-        if type(filter_value) is list:
-            values = filter_value
-
-        filters = [{
-            "Name": filter_name,
-            "Values": values
-        }]
-
-        return list(function.filter(Filters=filters))
-
