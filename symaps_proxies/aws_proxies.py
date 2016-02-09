@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
 import boto3
+from internet_gateways import InternetGateways
 import math
 import settings
+from subnets import Subnets
 from utils import setup_logger, merge_config, filter_resources, tag_with_name_with_suffix
 from vpcs import Vpcs
-from internet_gateways import InternetGateways
 
 
 class AWSProxies(object):
@@ -60,6 +61,7 @@ class AWSProxies(object):
 
         self.vpcs = Vpcs(self.ec2, self.tag_name_base)
         self.internet_gateways = InternetGateways(self.ec2, self.tag_name_base)
+        self.subnets = Subnets(self.ec2, self.tag_name_base)
 
     def bootstrap_instances_infrastucture(self, instances_groups_config):
 
@@ -102,7 +104,7 @@ class AWSProxies(object):
         internet_gateways = self.internet_gateways.get_or_create(self.config["vpcs"])
         self.config["vpcs"] = merge_config(self.config["vpcs"], internet_gateways)
 
-        subnets = self.get_or_create_subnets(self.config["vpcs"])
+        subnets = self.subnets.get_or_create(self.config["vpcs"])
         self.config["vpcs"] = merge_config(self.config["vpcs"], subnets)
 
         security_groups = self.get_or_create_security_groups(self.config[
@@ -128,75 +130,11 @@ class AWSProxies(object):
         self.terminate_instances()
         self.delete_enis()
         self.delete_security_groups()
-        self.delete_subnets()
+        self.subnets.delete()
         self.delete_route_tables()
         self.delete_network_acls()
         self.internet_gateways.delete()
         self.vpcs.delete()
-
-    def get_or_create_subnets(self, vpcs):
-        """Get or create subnets
-
-        Args:
-            vpcs (object): Vpcs config
-
-        Returns:
-            object: Subnets config
-        """
-        created_resources = []
-        for vpc_id, vpc in vpcs.iteritems():
-            if "Subnets" in vpc:
-                for index, subnet in enumerate(vpc["Subnets"]):
-                    found_resources = filter_resources(
-                        self.ec2.subnets, "cidrBlock", subnet["CidrBlock"])
-
-                    if not found_resources:
-                        resource = self.ec2.create_subnet(
-                            VpcId=vpc["VpcId"], CidrBlock=subnet["CidrBlock"])
-                    else:
-                        resource = self.ec2.Subnet(found_resources[0].id)
-
-                        self.logger.info(
-                            "A subnet with ID '%s', " +
-                            "cidr block '%s' and attached to vpc '%s' has been created or already exists",
-                            resource.id,
-                            subnet["CidrBlock"],
-                            vpc["VpcId"]
-                        )
-
-                    tag_with_name_with_suffix(
-                        resource, "subnet", index, self.tag_name_base)
-
-                    created_resources.append(
-                        {
-                            "SubnetId": resource.id,
-                            "CidrBlock": subnet["CidrBlock"],
-                            "NetworkInterfaces": subnet["NetworkInterfaces"]
-                        }
-                    )
-
-        return {
-            vpc["VpcId"]: {
-                "Subnets": created_resources
-            }
-        }
-
-        return created_resources
-
-    def delete_subnets(self):
-        subnets = filter_resources(
-            self.ec2.subnets,
-            "tag:Name",
-            self.tag_name_base + '-*'
-        )
-
-        for subnet in subnets:
-            subnet.delete()
-
-            self.logger.info(
-                "The subnet with ID '%s' has been deleted ",
-                subnet.id,
-            )
 
     def get_or_create_security_groups(self, vpcs):
         """Get or create security groups
