@@ -529,7 +529,7 @@ class AWSEC2Interface(object):
 
                 self.logger.info(
                     "A route table " +
-                    "with ID '%s' and attached to pvc '%s' has been created or already exists",
+                    "with ID '%s' and attached to vpc '%s' has been created or already exists",
                     resource.id,
                     vpc_id
                 )
