@@ -159,6 +159,8 @@ class AWSEC2Interface(object):
         return suffix + "-" + i
 
     def bootstrap_instances_infrastucture(self, instances_groups_config):
+
+        self.release_public_ips()
         created_instances_groups_config = self.setup_instances_groups_config(
             instances_groups_config)
 
@@ -179,7 +181,7 @@ class AWSEC2Interface(object):
         self.associate_public_ips_to_enis()
 
         # Create instances
-        self.create_instances(self.config['instances_groups'], self.config["vpcs"])
+        # self.create_instances(self.config['instances_groups'], self.config["vpcs"])
 
     def bootstrap_vpcs_infrastructure(self, vpcs):
         """Bootstrap Vpcs infrastructure
@@ -963,6 +965,68 @@ class AWSEC2Interface(object):
                     )
 
                 self.logger.info(msg)
+
+    def get_resources_id_by_tag_name(self):
+        """Dissociate public ips to elastic network interfaces and release ips
+        """
+        aws_enis = list(
+            self.ec2.network_interfaces.filter(
+                Filters=[
+                    {
+                        "Name": "tag:Name",
+                        "Values": [self.tag_name_base + '-*']
+                    }
+                ]
+            )
+        )
+
+        eni_ids = []
+        for aws_eni in aws_enis:
+            for aws_private_ip_address in aws_eni.private_ip_addresses:
+                eni_ids.append(aws_eni.id)
+
+    def release_public_ips(self):
+        """Dissociate public ips to elastic network interfaces and release ips
+        """
+        aws_enis = list(
+            self.ec2.network_interfaces.filter(
+                Filters=[
+                    {
+                        "Name": "tag:Name",
+                        "Values": [self.tag_name_base + '-*']
+                    }
+                ]
+            )
+        )
+
+        eni_ids = []
+        for aws_eni in aws_enis:
+            for aws_private_ip_address in aws_eni.private_ip_addresses:
+                eni_ids.append(aws_eni.id)
+
+        aws_addresses = self.ec2_client.describe_addresses(
+            Filters=[
+                {
+                    'Name': 'network-interface-id',
+                    'Values': eni_ids
+                },
+            ],
+        )
+
+        for aws_public_ip in aws_addresses['Addresses']:
+            self.ec2_client.disassociate_address(
+                AssociationId=aws_public_ip['AssociationId']
+            )
+
+            self.ec2_client.release_address(
+                AllocationId=aws_public_ip['AllocationId'],
+            )
+
+            self.logger.info(
+                "The public IP '%s' has been dissociated from network interface '%s' and released",
+                aws_public_ip['PublicIp'],
+                aws_public_ip['NetworkInterfaceId']
+            )
 
     def create_instances(self, instances_groups_config, vpcs_config):
         """Create instances
