@@ -3,7 +3,6 @@
 import lib.common.aws_utils as aws
 import logging
 import settings
-import json
 import sys
 
 
