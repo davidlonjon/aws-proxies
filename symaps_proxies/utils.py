@@ -109,11 +109,11 @@ def merge_config(conf1, conf2):
     return new_conf
 
 
-def filter_resources(function, filter_name, filter_value):
+def filter_resources(resource, filter_name, filter_value):
         """Filter AWS resources
 
         Args:
-            function (object): AWS resource
+            resource (object): EC2 resource
             filter_name (string): Filter name
             filter_value (string/list): Filter value(s)
 
@@ -129,7 +129,7 @@ def filter_resources(function, filter_name, filter_value):
             "Values": values
         }]
 
-        return list(function.filter(Filters=filters))
+        return list(resource.filter(Filters=filters))
 
 
 def create_name_tag_for_resource(resource, tag_name_base, suffix=""):
@@ -157,13 +157,10 @@ def tag_with_name_with_suffix(resource, type, index, tag_base_name):
     """Tag EC2 resource using name with a suffix
 
     Args:
-        resource (TYPE): Description
-        type (TYPE): Description
-        index (TYPE): Description
-        tag_base_name (TYPE): Description
-
-    Returns:
-        TYPE: Description
+        resource (object): EC2 resource
+        type (string): Resource type
+        index (integer): Resource index number
+        tag_base_name (string): Tag base name
     """
     suffix = create_suffix(type, index)
     create_name_tag_for_resource(resource, tag_base_name, suffix)
