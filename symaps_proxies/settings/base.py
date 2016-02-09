@@ -1,46 +1,9 @@
 # -*- coding: utf-8 -*-
 
-AWS_TAG_NAME_BASE = 'symaps-prod-proxies'
-PROXY_NODES_COUNT = 4
-AWS_INSTANCES_GROUPS_CONFIG = [
-    {
-        'InstanceType': 't1.micro',
-        'ImageName': 'tinyproxy',
-        'VPCCidrBlock': '15.0.0.0/16',
-        'CidrBlockFormatting': '15.0.\{0\}.\{1\}',
-        'SecurityGroups': [
-            {
-                'GroupName': 'default',
-                'Description': 'Security group for proxies',
-                'IngressRules': [
-                    {
-                        'IpProtocol': 'tcp',
-                        'FromPort': 8888,
-                        'ToPort': 8888,
-                        'IpRanges': [
-                            {
-                                'CidrIp': '0.0.0.0/0'
-                            },
-                        ]
-                    },
-                    {
-                        'IpProtocol': 'tcp',
-                        'FromPort': 22,
-                        'ToPort': 22,
-                        'IpRanges': [
-                            {
-                                'CidrIp': '0.0.0.0/0',
-                            },
-                        ]
-                    }
-                ]
-            }
-        ]
-    }
-]
+TAG_NAME_BASE = 'symaps-prod-proxies'
 
 # Instance Type, Maximum Elastic Network Interfaces, IP Addresses per Interface
-AWS_ENI_MAPPINGS = [
+ENI_MAPPINGS = [
     ('c1.medium', 2, 6),
     ('c1.xlarge', 4, 15),
     ('c3.large', 3, 10),
@@ -97,7 +60,7 @@ AWS_ENI_MAPPINGS = [
     ('t2.large', 3, 12),
 ]
 
-AWS_HVM_ONLY_INSTANCE_TYPES = ['c4', 'd2',   'g2', 'i2', 'm4', 'r3', 't2']
+HVM_ONLY_INSTANCE_TYPES = ['c4', 'd2',   'g2', 'i2', 'm4', 'r3', 't2']
 
 # More info at http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_Subnets.html#SubnetSize
 # AWS allow block size is between a /28 netmask and /16 netmask and reserve 5 ip addresses

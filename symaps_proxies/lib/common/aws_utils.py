@@ -4,6 +4,7 @@ import boto3
 import logging
 import math
 import sys
+import settings
 
 
 class AWSEC2Interface(object):
@@ -40,13 +41,20 @@ class AWSEC2Interface(object):
             raise ValueError(
                 "Could not create AWS EC2 client. Error message {0}".format(e.message))
 
-        self.eni_mappings = kwargs.pop("eni_mappings", None)
+        self.eni_mappings = kwargs.pop("eni_mappings", settings.ENI_MAPPINGS)
+
         self.cidr_suffix_ips_number_mapping = kwargs.pop(
-            "cidr_suffix_ips_number_mapping", None)
+            "cidr_suffix_ips_number_mapping",
+            settings.CIDR_SUFFIX_IPS_NUMBER_MAPPING
+        )
+
         self.proxy_nodes_count = kwargs.pop("proxy_nodes_count", 1)
-        self.tag_name_base = kwargs.pop("tag_name_base", "proxies")
+        self.tag_name_base = kwargs.pop("tag_name_base", settings.TAG_NAME_BASE)
+
         self.hvm_only_instance_types = kwargs.pop(
-            "hvm_only_instance_types", [])
+            "hvm_only_instance_types",
+            settings.HVM_ONLY_INSTANCE_TYPES
+        )
 
         if kwargs:
             raise TypeError("Unexpected **kwargs: %r" % kwargs)
@@ -184,7 +192,7 @@ class AWSEC2Interface(object):
         self.associate_public_ips_to_enis()
 
         # Create instances
-        self.create_instances(self.config['instances_groups'], self.config["vpcs"])
+        # self.create_instances(self.config['instances_groups'], self.config["vpcs"])
 
     def bootstrap_vpcs_infrastructure(self, vpcs):
         """Bootstrap Vpcs infrastructure
