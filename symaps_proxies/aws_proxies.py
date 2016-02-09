@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
 import boto3
-from utils import setup_logger, create_suffix
 import math
-import sys
 import settings
+from utils import setup_logger, create_suffix
 
 
 class AWSProxies(object):
@@ -1178,40 +1177,6 @@ class AWSProxies(object):
                 instances_config.append(instance_config)
 
         return instances_config
-
-    # Taken from:
-    # http://stackoverflow.com/questions/3041986/python-command-line-yes-no-input
-    def query_yes_no(self, question, default="yes"):
-        """Ask a yes/no question via raw_input() and return their answer.
-
-        "question" is a string that is presented to the user.
-        "default" is the presumed answer if the user just hits <Enter>.
-            It must be "yes" (the default), "no" or None (meaning
-            an answer is required of the user).
-
-        The "answer" return value is True for "yes" or False for "no".
-        """
-        valid = {"yes": True, "y": True, "ye": True,
-                 "no": False, "n": False}
-        if default is None:
-            prompt = " [y/n] "
-        elif default == "yes":
-            prompt = " [Y/n] "
-        elif default == "no":
-            prompt = " [y/N] "
-        else:
-            raise ValueError("invalid default answer: '%s'" % default)
-
-        while True:
-            sys.stdout.write(question + prompt)
-            choice = raw_input().lower()
-            if default is not None and choice == "":
-                return valid[default]
-            elif choice in valid:
-                return valid[choice]
-            else:
-                sys.stdout.write("Please respond with 'yes' or 'no' "
-                                 "(or 'y' or 'n').\n")
 
     def filter_resources(self, function, filter_name, filter_value):
         values = [filter_value]
