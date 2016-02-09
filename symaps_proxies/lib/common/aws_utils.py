@@ -165,6 +165,7 @@ class AWSEC2Interface(object):
         self.delete_enis()
         self.delete_route_tables()
         self.delete_network_acls()
+        self.delete_security_groups()
 
         created_instances_groups_config = self.setup_instances_groups_config(
             instances_groups_config)
@@ -464,6 +465,19 @@ class AWSEC2Interface(object):
         }
 
         return created_resources
+
+    def delete_security_groups(self):
+        """Delete security groups
+        """
+        security_groups = self.filter_resources(
+            self.ec2.security_groups,
+            "tag:Name",
+            self.tag_name_base + '-*'
+        )
+
+        for security_group in security_groups:
+            if "default" != security_group.group_name:
+                security_group.delete()
 
     def authorize_sg_ingress_rules(self, sg, sg_config):
         """Authorize security group ingress (inbound) rules
