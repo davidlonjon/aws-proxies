@@ -4,7 +4,7 @@ import logging
 import sys
 
 
-def setup_logger():
+def setup_logger(name):
         """Setup logger
 
         Returns:
@@ -18,7 +18,7 @@ def setup_logger():
                 def emit(self, record):
                     pass
 
-        logging.getLogger(__name__).addHandler(NullHandler())
+        logging.getLogger(name).addHandler(NullHandler())
         logging.basicConfig(level=logging.INFO)
 
         # Raise other modules log levels to make the logs for this module less
@@ -26,7 +26,7 @@ def setup_logger():
         for _ in ("boto3", "botocore"):
             logging.getLogger(_).setLevel(logging.WARNING)
 
-        return logging.getLogger(__name__)
+        return logging.getLogger(name)
 
 
 def create_suffix(suffix, index):

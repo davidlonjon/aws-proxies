@@ -4,6 +4,7 @@ import boto3
 import math
 import settings
 from utils import setup_logger, merge_config, filter_resources, tag_with_name_with_suffix
+from vpcs import Vpcs
 
 
 class AWSProxies(object):
@@ -19,7 +20,7 @@ class AWSProxies(object):
             TypeError: Description
         """
         # Setup logger
-        self.logger = setup_logger()
+        self.logger = setup_logger(__name__)
 
         # Get AWS Session
         self.session = boto3.Session(profile_name=profile)
@@ -56,6 +57,8 @@ class AWSProxies(object):
             "instances_groups": []
         }
 
+        self.vpcs = Vpcs(self.ec2, self.tag_name_base)
+
     def bootstrap_instances_infrastucture(self, instances_groups_config):
 
         # Delete the proxies infrastructure first
@@ -91,7 +94,7 @@ class AWSProxies(object):
             vpcs (object): Vpcs base config
 
         """
-        created_vpcs = self.get_or_create_vpcs(vpcs)
+        created_vpcs = self.vpcs.get_or_create(vpcs)
         self.config["vpcs"] = created_vpcs
 
         internet_gateways = self.get_or_create_internet_gateways(self.config[
@@ -129,58 +132,7 @@ class AWSProxies(object):
         self.delete_route_tables()
         self.delete_network_acls()
         self.delete_internet_gateways()
-        self.delete_vpcs()
-
-    def get_or_create_vpcs(self, vpcs):
-        """Get or create AWS vpcs
-
-        Args:
-            ec2 (object): EC2 resource
-            vpcs (dict): Vpcs config
-
-        Returns:
-            dict: vpcs configs
-        """
-
-        created_resources = {}
-        for index, vpc in enumerate(vpcs):
-            found_resources = filter_resources(
-                self.ec2.vpcs, "cidrBlock", vpc["CidrBlock"])
-
-            if not found_resources:
-                resource = self.ec2.create_vpc(CidrBlock=vpc["CidrBlock"])
-            else:
-                resource = self.ec2.Vpc(found_resources[0].id)
-
-            self.logger.info("A vpc with ID '%s' and cidr block '%s' has been created or already exists",
-                             resource.vpc_id,
-                             vpc["CidrBlock"]
-                             )
-
-            tag_with_name_with_suffix(
-                resource, "vpc", index, self.tag_name_base)
-
-            vpc["VpcId"] = resource.vpc_id
-            created_resources[resource.vpc_id] = vpc
-
-        return created_resources
-
-    def delete_vpcs(self):
-        """Delete VPCs
-        """
-        vpcs = filter_resources(
-            self.ec2.vpcs,
-            "tag:Name",
-            self.tag_name_base + '-*'
-        )
-
-        for vpc in vpcs:
-            vpc.delete()
-
-            self.logger.info(
-                "The vpc with ID '%s' has been deleted ",
-                vpc.id,
-            )
+        self.vpcs.delete()
 
     def get_or_create_internet_gateways(self, vpcs):
         """Get or create internet gateways
