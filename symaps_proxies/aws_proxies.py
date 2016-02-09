@@ -4,6 +4,7 @@ import boto3
 from internet_gateways import InternetGateways
 import math
 import settings
+from security_groups import SecurityGroups
 from subnets import Subnets
 from utils import setup_logger, merge_config, filter_resources, tag_with_name_with_suffix
 from vpcs import Vpcs
@@ -62,6 +63,7 @@ class AWSProxies(object):
         self.vpcs = Vpcs(self.ec2, self.tag_name_base)
         self.internet_gateways = InternetGateways(self.ec2, self.tag_name_base)
         self.subnets = Subnets(self.ec2, self.tag_name_base)
+        self.security_groups = SecurityGroups(self.ec2, self.tag_name_base)
 
     def bootstrap_instances_infrastucture(self, instances_groups_config):
 
@@ -107,10 +109,8 @@ class AWSProxies(object):
         subnets = self.subnets.get_or_create(self.config["vpcs"])
         self.config["vpcs"] = merge_config(self.config["vpcs"], subnets)
 
-        security_groups = self.get_or_create_security_groups(self.config[
-                                                             "vpcs"])
-        self.config["vpcs"] = merge_config(
-            self.config["vpcs"], security_groups)
+        security_groups = self.security_groups.get_or_create(self.config["vpcs"])
+        self.config["vpcs"] = merge_config(self.config["vpcs"], security_groups)
 
         route_tables = self.get_or_create_route_tables(self.config["vpcs"])
         self.config["vpcs"] = merge_config(
@@ -129,126 +129,12 @@ class AWSProxies(object):
         self.release_public_ips()
         self.terminate_instances()
         self.delete_enis()
-        self.delete_security_groups()
+        self.security_groups.delete()
         self.subnets.delete()
         self.delete_route_tables()
         self.delete_network_acls()
         self.internet_gateways.delete()
         self.vpcs.delete()
-
-    def get_or_create_security_groups(self, vpcs):
-        """Get or create security groups
-
-        Args:
-            vpcs (object): Vpcs config
-
-        Returns:
-            object: Security group config
-        """
-        created_resources = []
-        for vpc_id, vpc in vpcs.iteritems():
-            if "SecurityGroups" in vpc:
-                for index, sg in enumerate(vpc["SecurityGroups"]):
-                    found_resources = filter_resources(
-                        self.ec2.security_groups, "vpc-id", vpc["VpcId"])
-
-                    if not found_resources:
-                        resource = self.ec2.create_security_group(
-                            VpcId=vpc["VpcId"],
-                            GroupName=sg["GroupName"],
-                            Description=sg["Description"])
-
-                    else:
-                        resource = self.ec2.SecurityGroup(
-                            found_resources[0].id)
-
-                    if "IngressRules" in sg:
-                        self.authorize_sg_ingress_rules(resource, sg)
-
-                    if "EgressRules" in sg:
-                        self.authorize_sg_egress_rules(resource, sg)
-
-                    self.logger.info(
-                        "A security group with group name '%s', " +
-                        "with ID '%s' and attached to vpc '%s' has been created or already exists",
-                        sg["GroupName"],
-                        resource.id,
-                        vpc["VpcId"]
-                    )
-
-                    tag_with_name_with_suffix(
-                        resource, "sg", index, self.tag_name_base)
-
-                    created_resources.append(
-                        {
-                            "SecurityGroupId": resource.id,
-                            "GroupName": sg["GroupName"],
-                            "Description": sg["Description"],
-                        }
-                    )
-
-        return {
-            vpc["VpcId"]: {
-                "SecurityGroups": created_resources
-            }
-        }
-
-        return created_resources
-
-    def delete_security_groups(self):
-        """Delete security groups
-        """
-        security_groups = filter_resources(
-            self.ec2.security_groups,
-            "tag:Name",
-            self.tag_name_base + '-*'
-        )
-
-        for security_group in security_groups:
-            if "default" != security_group.group_name:
-                security_group.delete()
-
-    def authorize_sg_ingress_rules(self, sg, sg_config):
-        """Authorize security group ingress (inbound) rules
-
-        Args:
-            sg (object): Security group resource
-            sg_config (dict): Security group config
-        """
-        for ingress_rule in sg_config["IngressRules"]:
-            for permission in sg.ip_permissions:
-                rule_exists = False
-                if (ingress_rule["IpProtocol"] == permission.get("IpProtocol", None) and
-                        ingress_rule["FromPort"] == permission.get("FromPort", None) and
-                        ingress_rule["ToPort"] == permission.get("ToPort", None) and
-                        ingress_rule["IpRanges"] == permission.get("IpRanges", None)):
-                    rule_exists = True
-                    break
-
-            if not rule_exists:
-                sg.authorize_ingress(
-                    IpPermissions=[ingress_rule])
-
-    def authorize_sg_egress_rules(self, sg, sg_config):
-        """Authorize security group egress (outbound) rules
-
-        Args:
-            sg (object): Security group resource
-            sg_config (dict): Security group config
-        """
-        for egress_rule in sg_config["EgressRules"]:
-            for permission in sg.ip_permissions_egress:
-                rule_exists = False
-                if (egress_rule["IpProtocol"] == permission.get("IpProtocol", None) and
-                        egress_rule["FromPort"] == permission.get("FromPort", None) and
-                        egress_rule["ToPort"] == permission.get("ToPort", None) and
-                        egress_rule["IpRanges"] == permission.get("IpRanges", None)):
-                    rule_exists = True
-                    break
-
-            if not rule_exists:
-                sg.authorize_egress(
-                    IpPermissions=[egress_rule])
 
     def get_or_create_route_tables(self, vpcs):
         """Get or create route tables
