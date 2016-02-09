@@ -3,7 +3,7 @@ from __future__ import division
 import boto3
 import math
 import settings
-from utils import setup_logger, create_suffix
+from utils import setup_logger, create_suffix, merge_config
 
 
 class AWSProxies(object):
@@ -56,35 +56,6 @@ class AWSProxies(object):
             "instances_groups": []
         }
 
-    # Taken from
-    # http://stackoverflow.com/questions/38987/how-can-i-merge-two-python-dictionaries-in-a-single-expression
-    def merge_dicts(self, *dict_args):
-        """
-        Given any number of dicts, shallow copy and merge into a new dict,
-        precedence goes to key value pairs in latter dicts.
-        """
-        result = {}
-        for dictionary in dict_args:
-            result.update(dictionary)
-        return result
-
-    def merge_config(self, conf1, conf2):
-        """Merge cconfig
-
-        Args:
-            conf1 (dict): First configuration
-            conf2 (dict): Second configuration
-
-        Returns:
-            dict: Merge config
-        """
-        new_conf = {}
-        for key, value in conf2.iteritems():
-            if key in conf1:
-                new_conf[key] = self.merge_dicts(conf1[key], value)
-
-        return new_conf
-
     def bootstrap_instances_infrastucture(self, instances_groups_config):
 
         # Delete the proxies infrastructure first
@@ -125,26 +96,26 @@ class AWSProxies(object):
 
         internet_gateways = self.get_or_create_internet_gateways(self.config[
                                                                  "vpcs"])
-        self.config["vpcs"] = self.merge_config(
+        self.config["vpcs"] = merge_config(
             self.config["vpcs"], internet_gateways)
 
         subnets = self.get_or_create_subnets(self.config["vpcs"])
-        self.config["vpcs"] = self.merge_config(self.config["vpcs"], subnets)
+        self.config["vpcs"] = merge_config(self.config["vpcs"], subnets)
 
         security_groups = self.get_or_create_security_groups(self.config[
                                                              "vpcs"])
-        self.config["vpcs"] = self.merge_config(
+        self.config["vpcs"] = merge_config(
             self.config["vpcs"], security_groups)
 
         route_tables = self.get_or_create_route_tables(self.config["vpcs"])
-        self.config["vpcs"] = self.merge_config(
+        self.config["vpcs"] = merge_config(
             self.config["vpcs"], route_tables)
 
         self.associate_subnets_to_routes(self.config["vpcs"])
         self.create_ig_route(self.config["vpcs"])
 
         network_acls = self.get_or_create_network_acls(self.config["vpcs"])
-        self.config["vpcs"] = self.merge_config(
+        self.config["vpcs"] = merge_config(
             self.config["vpcs"], network_acls)
 
     def delete_proxies_infrastructure(self):
