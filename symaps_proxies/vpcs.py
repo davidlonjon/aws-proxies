@@ -6,6 +6,7 @@ from utils import setup_logger, filter_resources, tag_with_name_with_suffix
 class Vpcs(object):
     """VPCS representation
     """
+
     def __init__(self, ec2, tag_base_name):
         """Constructor
 
