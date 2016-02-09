@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
 import boto3
-import logging
+from utils import setup_logger
 import math
 import sys
 import settings
@@ -20,7 +20,7 @@ class AWSProxies(object):
             TypeError: Description
         """
         # Setup logger
-        self.logger = self.__setup_logger()
+        self.logger = setup_logger()
 
         # Get AWS Session
         self.session = boto3.Session(profile_name=profile)
@@ -56,30 +56,6 @@ class AWSProxies(object):
             "vpcs": {},
             "instances_groups": []
         }
-
-    def __setup_logger(self):
-        """Setup logger
-
-        Returns:
-            object: Logger
-        """
-        try:  # Python 2.7+
-            from logging import NullHandler
-        except ImportError:
-            class NullHandler(logging.Handler):
-
-                def emit(self, record):
-                    pass
-
-        logging.getLogger(__name__).addHandler(NullHandler())
-        logging.basicConfig(level=logging.INFO)
-
-        # Raise other modules log levels to make the logs for this module less
-        # cluttered with noise
-        for _ in ("boto3", "botocore"):
-            logging.getLogger(_).setLevel(logging.WARNING)
-
-        return logging.getLogger(__name__)
 
     # Taken from
     # http://stackoverflow.com/questions/38987/how-can-i-merge-two-python-dictionaries-in-a-single-expression
