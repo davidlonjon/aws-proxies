@@ -3,7 +3,7 @@ from __future__ import division
 import boto3
 import math
 import settings
-from utils import setup_logger, create_suffix, merge_config, filter_resources
+from utils import setup_logger, merge_config, filter_resources, tag_with_name_with_suffix
 
 
 class AWSProxies(object):
@@ -131,30 +131,6 @@ class AWSProxies(object):
         self.delete_internet_gateways()
         self.delete_vpcs()
 
-    def create_name_tag_for_resource(self, resource, tag_name_base, suffix=""):
-        """Create a name tag for a EC2 resource using a suffix if passed
-
-        Args:
-            resource (object): EC2 resource
-            tag_name_base (string): Base name tag value
-            suffix (str, optional): Suffix
-        """
-        tag_name = {
-            "Key": "Name",
-            "Value": tag_name_base
-        }
-
-        if suffix:
-            tag_name["Value"] = tag_name["Value"] + "-" + suffix
-
-        resource.create_tags(
-            Tags=[tag_name]
-        )
-
-    def tag_with_name_with_suffix(self, resource, type, index, tag_base_name):
-        suffix = create_suffix(type, index)
-        self.create_name_tag_for_resource(resource, tag_base_name, suffix)
-
     def get_or_create_vpcs(self, vpcs):
         """Get or create AWS vpcs
 
@@ -181,7 +157,7 @@ class AWSProxies(object):
                              vpc["CidrBlock"]
                              )
 
-            self.tag_with_name_with_suffix(
+            tag_with_name_with_suffix(
                 resource, "vpc", index, self.tag_name_base)
 
             vpc["VpcId"] = resource.vpc_id
@@ -241,7 +217,7 @@ class AWSProxies(object):
                                 InternetGatewayId=resource.id,
                             )
 
-                self.tag_with_name_with_suffix(
+                tag_with_name_with_suffix(
                     resource, "ig", index, self.tag_name_base)
 
                 self.logger.info(
@@ -315,7 +291,7 @@ class AWSProxies(object):
                             vpc["VpcId"]
                         )
 
-                    self.tag_with_name_with_suffix(
+                    tag_with_name_with_suffix(
                         resource, "subnet", index, self.tag_name_base)
 
                     created_resources.append(
@@ -389,7 +365,7 @@ class AWSProxies(object):
                         vpc["VpcId"]
                     )
 
-                    self.tag_with_name_with_suffix(
+                    tag_with_name_with_suffix(
                         resource, "sg", index, self.tag_name_base)
 
                     created_resources.append(
@@ -490,7 +466,7 @@ class AWSProxies(object):
                     vpc_id
                 )
 
-            self.tag_with_name_with_suffix(
+            tag_with_name_with_suffix(
                 resource, "rt", index, self.tag_name_base)
 
             created_resources.append(
@@ -640,7 +616,7 @@ class AWSProxies(object):
                     vpc_id
                 )
 
-            self.tag_with_name_with_suffix(
+            tag_with_name_with_suffix(
                 resource, "netacl", index, self.tag_name_base)
 
             created_resources.append(
@@ -932,7 +908,7 @@ class AWSProxies(object):
                             SecondaryPrivateIpAddressCount=eni["Ips"][
                                 "SecondaryPrivateIpAddressCount"],
                         )
-                        self.tag_with_name_with_suffix(
+                        tag_with_name_with_suffix(
                             created_eni, "eni", index, self.tag_name_base)
 
                         created_eni.create_tags(
@@ -1143,7 +1119,7 @@ class AWSProxies(object):
                 aws_reservation = self.ec2_client.run_instances(**instance_config)
                 aws_instance_config = aws_reservation['Instances'][0]
                 aws_instance = self.ec2.Instance(aws_instance_config['InstanceId'])
-                self.tag_with_name_with_suffix(aws_instance, "i", instance_index, self.tag_name_base)
+                tag_with_name_with_suffix(aws_instance, "i", instance_index, self.tag_name_base)
                 instance_config['InstanceId'] = aws_instance_config['InstanceId']
                 instances_config.append(instance_config)
 

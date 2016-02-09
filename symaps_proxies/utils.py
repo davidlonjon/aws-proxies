@@ -131,3 +131,39 @@ def filter_resources(function, filter_name, filter_value):
 
         return list(function.filter(Filters=filters))
 
+
+def create_name_tag_for_resource(resource, tag_name_base, suffix=""):
+        """Create a name tag for a EC2 resource using a suffix if passed
+
+        Args:
+            resource (object): EC2 resource
+            tag_name_base (string): Base name tag value
+            suffix (str, optional): Suffix
+        """
+        tag_name = {
+            "Key": "Name",
+            "Value": tag_name_base
+        }
+
+        if suffix:
+            tag_name["Value"] = tag_name["Value"] + "-" + suffix
+
+        resource.create_tags(
+            Tags=[tag_name]
+        )
+
+
+def tag_with_name_with_suffix(resource, type, index, tag_base_name):
+    """Tag EC2 resource using name with a suffix
+
+    Args:
+        resource (TYPE): Description
+        type (TYPE): Description
+        index (TYPE): Description
+        tag_base_name (TYPE): Description
+
+    Returns:
+        TYPE: Description
+    """
+    suffix = create_suffix(type, index)
+    create_name_tag_for_resource(resource, tag_base_name, suffix)
