@@ -42,7 +42,7 @@ def main():
             profile='david_dev',
             proxy_nodes_count=settings.PROXY_NODES_COUNT,
         )
-    except ValueError as e:
+    except Exception as e:
         logger.error("Error: %s", e.message)
         sys.exit()
 

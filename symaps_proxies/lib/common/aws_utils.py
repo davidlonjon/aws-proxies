@@ -14,32 +14,25 @@ class AWSEC2Interface(object):
 
         Args:
             profile (string): AWS profile
+            **kwargs: Multiple arguments
+
+        Raises:
+            TypeError: Description
         """
         # Setup logger
         self.logger = self.__setup_logger()
 
         # Get AWS Session
-        try:
-            self.session = self.__get_session(profile)
-            self.logger.info("AWS Session created")
-        except Exception:
-            raise ValueError("Could not open AWS session")
+        self.session = self.__get_session(profile)
+        self.logger.info("AWS Session created")
 
         # Get AWS EC2 Resource
-        try:
-            self.ec2 = self.__get_resource("ec2")
-            self.logger.info("AWS EC2 resource created")
-        except Exception as e:
-            raise ValueError(
-                "Could not create AWS EC2 resource. Error message {0}".format(e.message))
+        self.ec2 = self.__get_resource("ec2")
+        self.logger.info("AWS EC2 resource created")
 
         # Get AWS EC2 Client
-        try:
-            self.ec2_client = self.__get_client_from_resource(self.ec2)
-            self.logger.info("AWS EC2 client created")
-        except Exception as e:
-            raise ValueError(
-                "Could not create AWS EC2 client. Error message {0}".format(e.message))
+        self.ec2_client = self.__get_client_from_resource(self.ec2)
+        self.logger.info("AWS EC2 client created")
 
         self.eni_mappings = kwargs.pop("eni_mappings", settings.ENI_MAPPINGS)
 
