@@ -23,15 +23,15 @@ class AWSProxies(object):
         self.logger = self.__setup_logger()
 
         # Get AWS Session
-        self.session = self.__get_session(profile)
+        self.session = boto3.Session(profile_name=profile)
         self.logger.info("AWS Session created")
 
         # Get AWS EC2 Resource
-        self.ec2 = self.__get_resource("ec2")
+        self.ec2 = self.session.resource("ec2")
         self.logger.info("AWS EC2 resource created")
 
         # Get AWS EC2 Client
-        self.ec2_client = self.__get_client_from_resource(self.ec2)
+        self.ec2_client = self.ec2.meta.client
         self.logger.info("AWS EC2 client created")
 
         self.eni_mappings = kwargs.pop("eni_mappings", settings.ENI_MAPPINGS)
@@ -80,42 +80,6 @@ class AWSProxies(object):
             logging.getLogger(_).setLevel(logging.WARNING)
 
         return logging.getLogger(__name__)
-
-    def __get_session(self, profile):
-        """Get AWS Session
-
-        Args:
-            profile (string): AWS credential profile
-
-        Returns:
-            object: AWS session object
-        """
-        session = boto3.Session(profile_name=profile)
-        return session
-
-    def __get_resource(self, resource):
-        """Get AWS resource
-
-        Args:
-            resource (string): AWS resource
-
-        Returns:
-            object: EC2 resource
-        """
-        resource = self.session.resource(resource)
-        return resource
-
-    def __get_client_from_resource(self, resource):
-        """Get AWS resource
-
-        Args:
-            resource (object): AWS resource
-
-        Returns:
-            object: EC2 resource
-        """
-        client = resource.meta.client
-        return client
 
     # Taken from
     # http://stackoverflow.com/questions/38987/how-can-i-merge-two-python-dictionaries-in-a-single-expression
