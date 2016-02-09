@@ -5,6 +5,7 @@ import math
 import settings
 from utils import setup_logger, merge_config, filter_resources, tag_with_name_with_suffix
 from vpcs import Vpcs
+from internet_gateways import InternetGateways
 
 
 class AWSProxies(object):
@@ -58,6 +59,7 @@ class AWSProxies(object):
         }
 
         self.vpcs = Vpcs(self.ec2, self.tag_name_base)
+        self.internet_gateways = InternetGateways(self.ec2, self.tag_name_base)
 
     def bootstrap_instances_infrastucture(self, instances_groups_config):
 
@@ -97,10 +99,8 @@ class AWSProxies(object):
         created_vpcs = self.vpcs.get_or_create(vpcs)
         self.config["vpcs"] = created_vpcs
 
-        internet_gateways = self.get_or_create_internet_gateways(self.config[
-                                                                 "vpcs"])
-        self.config["vpcs"] = merge_config(
-            self.config["vpcs"], internet_gateways)
+        internet_gateways = self.internet_gateways.get_or_create(self.config["vpcs"])
+        self.config["vpcs"] = merge_config(self.config["vpcs"], internet_gateways)
 
         subnets = self.get_or_create_subnets(self.config["vpcs"])
         self.config["vpcs"] = merge_config(self.config["vpcs"], subnets)
@@ -131,87 +131,8 @@ class AWSProxies(object):
         self.delete_subnets()
         self.delete_route_tables()
         self.delete_network_acls()
-        self.delete_internet_gateways()
+        self.internet_gateways.delete()
         self.vpcs.delete()
-
-    def get_or_create_internet_gateways(self, vpcs):
-        """Get or create internet gateways
-
-        Args:
-            ec2 (object): EC2 resource
-            vpcs (dict): Vpcs config
-
-        Returns:
-            dict: Internet gateways config
-        """
-        created_resources = []
-        index = 0
-        for vpc_id, vpc in vpcs.iteritems():
-            if "CreateInternetGateway" in vpc:
-                found_resources = filter_resources(
-                    self.ec2.internet_gateways, "attachment.vpc-id", vpc["VpcId"])
-
-                if not found_resources:
-                    resource = self.ec2.create_internet_gateway()
-                    self.ec2.Vpc(vpc["VpcId"]).attach_internet_gateway(
-                        InternetGatewayId=resource.id,
-                    )
-                else:
-                    resource = self.ec2.InternetGateway(found_resources[0].id)
-
-                    for attachment in resource.attachments:
-                        vpc_already_attached = False
-                        if attachment["VpcId"] == vpc["VpcId"]:
-                            vpc_already_attached = True
-
-                        if not vpc_already_attached:
-                            self.ec2.Vpc(vpc["VpcId"]).attach_internet_gateway(
-                                InternetGatewayId=resource.id,
-                            )
-
-                tag_with_name_with_suffix(
-                    resource, "ig", index, self.tag_name_base)
-
-                self.logger.info(
-                    "An internet gateway with ID '%s' attached to vpc '%s' has been created or already exists",
-                    resource.id,
-                    vpc["VpcId"]
-                )
-
-                created_resources.append(
-                    {
-                        "InternetGatewayId": resource.id,
-                    }
-                )
-
-                index = index + 1
-
-        return {
-            vpc["VpcId"]: {
-                "InternetGateways": created_resources
-            }
-        }
-
-    def delete_internet_gateways(self):
-        """Delete internet gateways
-        """
-        internet_gateways = filter_resources(
-            self.ec2.internet_gateways,
-            "tag:Name",
-            self.tag_name_base + '-*'
-        )
-
-        for internet_gateway in internet_gateways:
-            if hasattr(internet_gateway, 'attachments'):
-                for attachment in internet_gateway.attachments:
-                    internet_gateway.detach_from_vpc(VpcId=attachment['VpcId'])
-
-            internet_gateway.delete()
-
-            self.logger.info(
-                "The internet_gateway with ID '%s' has been deleted ",
-                internet_gateway.id,
-            )
 
     def get_or_create_subnets(self, vpcs):
         """Get or create subnets
