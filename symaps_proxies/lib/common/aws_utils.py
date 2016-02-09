@@ -966,38 +966,11 @@ class AWSEC2Interface(object):
 
                 self.logger.info(msg)
 
-    def get_resources_id_by_tag_name(self):
-        """Dissociate public ips to elastic network interfaces and release ips
-        """
-        aws_enis = list(
-            self.ec2.network_interfaces.filter(
-                Filters=[
-                    {
-                        "Name": "tag:Name",
-                        "Values": [self.tag_name_base + '-*']
-                    }
-                ]
-            )
-        )
-
-        eni_ids = []
-        for aws_eni in aws_enis:
-            for aws_private_ip_address in aws_eni.private_ip_addresses:
-                eni_ids.append(aws_eni.id)
-
     def release_public_ips(self):
         """Dissociate public ips to elastic network interfaces and release ips
         """
-        aws_enis = list(
-            self.ec2.network_interfaces.filter(
-                Filters=[
-                    {
-                        "Name": "tag:Name",
-                        "Values": [self.tag_name_base + '-*']
-                    }
-                ]
-            )
-        )
+        aws_enis = self.filter_resources(
+            self.ec2.network_interfaces, "tag:Name", self.tag_name_base + '-*')
 
         eni_ids = []
         for aws_eni in aws_enis:
