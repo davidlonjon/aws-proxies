@@ -164,3 +164,72 @@ def tag_with_name_with_suffix(resource, type, index, tag_base_name):
     """
     suffix = create_suffix(type, index)
     create_name_tag_for_resource(resource, tag_base_name, suffix)
+
+
+def get_subnet_cidr_block(cidr_block_formatting, instance_index, subnet_suffix):
+    """Get subnet cidr block
+
+    Args:
+        cidr_block_formatting (string): Cidr block formating
+        instance_index (integer): Instance index
+        subnet_suffix (string): subnet suffix
+
+    Returns:
+        string: Subnet cidr block
+    """
+    subnet_cidr_block = cidr_block_formatting.replace(
+        "\\", "").format(instance_index, 0) + subnet_suffix
+    return subnet_cidr_block
+
+
+def get_vpc_gateway_ip(cidr_block_formatting):
+    """Get vpc gateway IP
+
+    Args:
+        cidr_block_formatting (string): Cidr block formating
+
+    Returns:
+        string: Vpc gateway ip
+    """
+    vpc_gateway_ip = cidr_block_formatting.replace(
+        "\\", "").format(0, 1)
+    return vpc_gateway_ip
+
+
+def get_subnet_cidr_suffix(proxy_nodes_count, cidr_suffix_ips_number_mapping):
+        """Get subnet cidr suffix
+
+        Args:
+            proxy_nodes_count (integer): proxy nodes count
+            cidr_suffix_ips_number_mapping (dict): Cidr suffix ips number mapping
+
+        Returns:
+            string: subnet cidr suffix
+        """
+        cidr_suffix = "/28"
+        if cidr_suffix_ips_number_mapping is not None:
+            for item in cidr_suffix_ips_number_mapping:
+                if item[0] > proxy_nodes_count:
+                    cidr_suffix = item[1]
+                    break
+
+        return cidr_suffix
+
+
+def get_instance_eni_mapping(instance_type, eni_mapping):
+    """Get instance elastic network interface mapping
+
+    Args:
+        instance_type (string): Instance type
+        eni_mapping (dict): Elastic network interface mappings
+
+    Returns:
+        Tuple: Instance elastic network interface mapping
+    """
+    instance_eni_mapping = []
+
+    if eni_mapping is not None:
+        instance_eni_mapping = [
+            item for item in eni_mapping if item[0] == instance_type]
+    return instance_eni_mapping
+

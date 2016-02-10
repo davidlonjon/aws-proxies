@@ -8,7 +8,9 @@ from route_tables import RouteTables
 import settings
 from security_groups import SecurityGroups
 from subnets import Subnets
-from utils import setup_logger, merge_config, filter_resources, tag_with_name_with_suffix
+from utils import setup_logger, merge_config, filter_resources, \
+    tag_with_name_with_suffix, get_subnet_cidr_block, get_vpc_gateway_ip, \
+    get_subnet_cidr_suffix, get_instance_eni_mapping
 from vpcs import Vpcs
 
 
@@ -39,7 +41,7 @@ class AWSProxies(object):
         self.ec2_client = self.ec2.meta.client
         self.logger.info("AWS EC2 client created")
 
-        self.eni_mappings = kwargs.pop("eni_mappings", settings.ENI_MAPPINGS)
+        self.eni_mapping = kwargs.pop("eni_mappings", settings.ENI_MAPPING)
 
         self.cidr_suffix_ips_number_mapping = kwargs.pop(
             "cidr_suffix_ips_number_mapping",
@@ -87,7 +89,7 @@ class AWSProxies(object):
         self.check_image_virtualization_against_instance_types(
             self.config["instances_groups"])
 
-        tmp_vpcs_config = self.build_tmp_vpcs_config(instances_groups_config)
+        tmp_vpcs_config = AWSProxies.__build_tmp_vpcs_config(instances_groups_config)
 
         # Create VPCS Infrastructure
         self.bootstrap_vpcs_infrastructure([tmp_vpcs_config])
@@ -168,68 +170,6 @@ class AWSProxies(object):
 
         return image_id
 
-    def get_instance_eni_mapping(self, instance_type):
-        """Get instance elastic network interface mapping
-
-        Args:
-            instance_type (string): Instance type
-
-        Returns:
-            Tuple: Instance elastic network interface mapping
-        """
-        instance_eni_mapping = []
-
-        if self.eni_mappings is not None:
-            instance_eni_mapping = [
-                item for item in self.eni_mappings if item[0] == instance_type]
-        return instance_eni_mapping
-
-    def get_subnet_cidr_suffix(self, proxy_nodes_count):
-        """Get subnet cidr suffix
-
-        Args:
-            proxy_nodes_count (integer): proxy nodes count
-
-        Returns:
-            string: subnet cidr suffix
-        """
-        cidr_suffix = "/28"
-        if self.cidr_suffix_ips_number_mapping is not None:
-            for item in self.cidr_suffix_ips_number_mapping:
-                if item[0] > proxy_nodes_count:
-                    cidr_suffix = item[1]
-                    break
-
-        return cidr_suffix
-
-    def get_subnet_cidr_block(self, cidr_block_formatting, instance_index, subnet_suffix):
-        """Get subnet cidr block
-
-        Args:
-            cidr_block_formatting (string): Cidr block formating
-            instance_index (integer): Instance index
-            subnet_suffix (string): subnet suffix
-
-        Returns:
-            string: Subnet cidr block
-        """
-        subnet_cidr_block = cidr_block_formatting.replace(
-            "\\", "").format(instance_index, 0) + subnet_suffix
-        return subnet_cidr_block
-
-    def get_vpc_gateway_ip(self, cidr_block_formatting):
-        """Get vpc gateway IP
-
-        Args:
-            cidr_block_formatting (string): Cidr block formating
-
-        Returns:
-            string: Vpc gateway ip
-        """
-        vpc_gateway_ip = cidr_block_formatting.replace(
-            "\\", "").format(0, 1)
-        return vpc_gateway_ip
-
     def setup_instances_groups_config(self, instances_config):
         created_instance_type_config = []
         for instance_config in instances_config:
@@ -243,8 +183,9 @@ class AWSProxies(object):
             instance_enis_count = 1
             instance_eni_private_ips_count = 1
             instance_eni_public_ips_count = 1
-            instance_eni_mapping = self.get_instance_eni_mapping(
-                instance_config["InstanceType"])
+            instance_eni_mapping = get_instance_eni_mapping(
+                instance_type=instance_config["InstanceType"],
+                eni_mapping=self.eni_mapping)
             if instance_eni_mapping:
                 instance_enis_count = instance_eni_mapping[0][1]
                 instance_eni_private_ips_count = instance_eni_mapping[0][2]
@@ -270,9 +211,10 @@ class AWSProxies(object):
             instance_config["MinCount"] = instance_per_type_count
             instance_config["MaxCount"] = instance_per_type_count
 
-            subnet_cidr_suffix = self.get_subnet_cidr_suffix(
-                self.proxy_nodes_count)
-            subnet_cidr_block = self.get_subnet_cidr_block(
+            subnet_cidr_suffix = get_subnet_cidr_suffix(
+                proxy_nodes_count=self.proxy_nodes_count,
+                cidr_suffix_ips_number_mapping=self.cidr_suffix_ips_number_mapping)
+            subnet_cidr_block = get_subnet_cidr_block(
                 instance_config["CidrBlockFormatting"], 0, subnet_cidr_suffix)
 
             # print "*****"
@@ -285,7 +227,7 @@ class AWSProxies(object):
                     "NetworkInterfaces": [],
                     "CidrBlock": subnet_cidr_block,
                     "SubnetCidrSuffix": subnet_cidr_suffix,
-                    'GatewayIP': self.get_vpc_gateway_ip(instance_config["CidrBlockFormatting"])
+                    'GatewayIP': get_vpc_gateway_ip(instance_config["CidrBlockFormatting"])
                 })
                 for j in range(0, instance_enis_count):
                     if possible_ips_remaining / instance_eni_private_ips_count > 1:
@@ -348,7 +290,8 @@ class AWSProxies(object):
                 raise ValueError("Error message {0}".format(e.message))
                 break
 
-    def build_tmp_vpcs_config(self, instances_groups_config):
+    @staticmethod
+    def __build_tmp_vpcs_config(instances_groups_config):
         """Build a temporary vpcs config schema
 
         Args:

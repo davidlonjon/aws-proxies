@@ -3,7 +3,7 @@
 TAG_BASE_NAME = 'symaps-prod-proxies'
 
 # Instance Type, Maximum Elastic Network Interfaces, IP Addresses per Interface
-ENI_MAPPINGS = [
+ENI_MAPPING = [
     ('c1.medium', 2, 6),
     ('c1.xlarge', 4, 15),
     ('c3.large', 3, 10),
