@@ -133,17 +133,17 @@ def filter_resources(resource, filter_name, filter_value):
         return list(resource.filter(Filters=filters))
 
 
-def create_name_tag_for_resource(resource, tag_name_base, suffix=""):
+def create_name_tag_for_resource(resource, tag_base_name, suffix=""):
         """Create a name tag for a EC2 resource using a suffix if passed
 
         Args:
             resource (object): EC2 resource
-            tag_name_base (string): Base name tag value
-            suffix (str, optional): Suffix
+            tag_base_name (string): Tag base name
+            suffix (string, optional): Suffix
         """
         tag_name = {
             "Key": "Name",
-            "Value": tag_name_base
+            "Value": tag_base_name
         }
 
         if suffix:
