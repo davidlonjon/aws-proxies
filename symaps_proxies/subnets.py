@@ -1,22 +1,16 @@
 # -*- coding: utf-8 -*-
 
+from base_resources import BaseResources
 from utils import setup_logger, filter_resources, tag_with_name_with_suffix
 
 
-class Subnets(object):
+class Subnets(BaseResources):
     """Subnets representation
     """
 
-    def __init__(self, ec2, tag_base_name):
-        """Constructor
-
-        Args:
-            ec2 (object): Aws Ec2 session
-            tag_base_name (dict): Resource tag base name
-        """
+    def __init__(self, ec2, ec2_client, tag_base_name):
+        BaseResources.__init__(self, ec2, ec2_client, tag_base_name)
         self.logger = setup_logger(__name__)
-        self.ec2 = ec2
-        self.tag_base_name = tag_base_name
 
     def get_or_create(self, config):
         """Get or create Aws Ec2 subnets

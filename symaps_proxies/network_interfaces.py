@@ -1,24 +1,16 @@
 # -*- coding: utf-8 -*-
 
+from base_resources import BaseResources
 from utils import setup_logger, filter_resources, tag_with_name_with_suffix
 
 
-class NetworkInterfaces(object):
+class NetworkInterfaces(BaseResources):
     """Network interfaces representation
     """
 
     def __init__(self, ec2, ec2_client, tag_base_name):
-        """Constructor
-
-        Args:
-            ec2 (object): Aws Ec2 session
-            ec2_client (object): Aws Ec2 client
-            tag_base_name (dict): Resource tag base name
-        """
+        BaseResources.__init__(self, ec2, ec2_client, tag_base_name)
         self.logger = setup_logger(__name__)
-        self.ec2 = ec2
-        self.ec2_client = ec2_client
-        self.tag_base_name = tag_base_name
 
     def create(self, config):
         """Create network interfaces

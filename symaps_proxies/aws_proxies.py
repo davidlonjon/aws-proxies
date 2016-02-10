@@ -65,20 +65,19 @@ class AWSProxies(object):
             "instances_groups": []
         }
 
-        self.vpcs = Vpcs(self.ec2, self.tag_base_name)
-        self.internet_gateways = InternetGateways(self.ec2, self.tag_base_name)
-        self.subnets = Subnets(self.ec2, self.tag_base_name)
-        self.security_groups = SecurityGroups(self.ec2, self.tag_base_name)
-        self.route_tables = RouteTables(
-            ec2=self.ec2,
-            ec2_client=self.ec2_client,
-            tag_base_name=self.tag_base_name
-        )
-        self.network_acls = NetworkAcls(self.ec2, self.tag_base_name)
-        self.network_interfaces = NetworkInterfaces(
-            ec2=self.ec2,
-            ec2_client=self.ec2_client,
-            tag_base_name=self.tag_base_name)
+        resources_params = {
+            "ec2": self.ec2,
+            "ec2_client": self.ec2_client,
+            "tag_base_name": self.tag_base_name
+        }
+
+        self.vpcs = Vpcs(**resources_params)
+        self.internet_gateways = InternetGateways(**resources_params)
+        self.subnets = Subnets(**resources_params)
+        self.security_groups = SecurityGroups(**resources_params)
+        self.route_tables = RouteTables(**resources_params)
+        self.network_acls = NetworkAcls(**resources_params)
+        self.network_interfaces = NetworkInterfaces(**resources_params)
 
     def bootstrap_instances_infrastucture(self, instances_groups_config):
 
