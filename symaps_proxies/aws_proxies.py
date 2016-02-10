@@ -86,7 +86,7 @@ class AWSProxies(object):
         self.delete_proxies_infrastructure()
 
         # Setup proxies infrastructure config
-        created_instances_groups_config = self.setup_instances_groups_config(
+        created_instances_groups_config = self.__setup_instances_groups_config(
             instances_groups_config)
 
         self.config["instances_groups"].append(created_instances_groups_config)
@@ -106,7 +106,7 @@ class AWSProxies(object):
         self.network_interfaces.associate_public_ips_to_enis()
 
         # Create instances
-        self.instances.create(self.config['instances_groups'], self.config["vpcs"])
+        # self.instances.create(self.config['instances_groups'], self.config["vpcs"])
 
     def bootstrap_vpcs_infrastructure(self, vpcs):
         """Bootstrap Vpcs infrastructure
@@ -175,7 +175,15 @@ class AWSProxies(object):
 
         return image_id
 
-    def setup_instances_groups_config(self, instances_config):
+    def __setup_instances_groups_config(self, instances_config):
+        """Setup instance groups config
+
+        Args:
+            instances_config (dict): Instances config
+
+        Returns:
+            dict: Created instances config
+        """
         created_instance_type_config = []
         for instance_config in instances_config:
             if "ImageName" in instance_config:
