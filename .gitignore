@@ -160,3 +160,18 @@ local.py
 # Json config files #
 ##############
 */config/*.json
+
+# Python package general things to ignore #
+###################################
+build/
+dist/
+*.egg-info/
+*.egg
+*.py[cod]
+__pycache__/
+*.so
+*~
+
+# due to using tox and pytest
+.tox
+.cache
