@@ -9,61 +9,6 @@
 out/
 local.properties
 
-# Generic Android ignores #
-###########################
-target
-gen/
-
-# Built Application Files
-###########################
-*.apk
-*.ap_
-
-# Files for the dex VM
-###########################
-*.dex
-
-# Compiled source #
-###################
-*.com
-*.class
-*.dll
-*.exe
-*.o
-*.so
-
-# Packages #
-############
-*.7z
-*.jar
-*.rar
-*.zip
-*.gz
-*.bzip
-*.xz
-*.lzma
-
-# Packing-only formats #
-####################
-*.iso
-*.tar
-
-# Package management formats #
-############################
-*.dmg
-*.xpi
-*.gem
-*.egg
-*.deb
-*.rpm
-
-# Logs and databases #
-######################
-log/
-*.log
-*.sql
-*.sqlite
-
 # OS generated files #
 ######################
 .DS_Store
@@ -87,9 +32,6 @@ Desktop.ini
 .svn/
 CVS/
 
-# NPM #
-#######
-.npmignore
 
 # Always-ignore folders #
 ########################
@@ -112,35 +54,11 @@ tmp/
 #########
 *.pyc
 
-# Sass #
-#######
-*.sass-cache
-
 # Ctags #
 ########
 .tags
 .tags_sorted_by_file
 .gemtags
-
-# Vagrant #
-##########
-.vagrant
-
-# XCode 5 #
-###########
-*.xcuserstate
-*.pbxuser
-*.mode1v3
-*.mode2v3
-*.perspectivev3
-xcuserdata/
-*.xccheckout
-*.moved-aside
-DerivedData
-!default.pbxuser
-!default.mode1v3
-!default.mode2v3
-!default.perspectivev3
 
 # Sublime Text #
 ##############
@@ -148,18 +66,10 @@ sublime/
 *.sublime-project
 *.sublime-workspace
 
-# Local settings #
-##############
-local.py
-
 # Jupyter #
 ##############
 .ipynb_checkpoints/
 *.ipynb
-
-# Json config files #
-##############
-*/config/*.json
 
 # Python package general things to ignore #
 ###################################
