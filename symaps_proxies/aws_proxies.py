@@ -2,9 +2,10 @@
 from __future__ import division
 import boto3
 from internet_gateways import InternetGateways
+from network_acls import NetworkAcls
 import math
-import settings
 from route_tables import RouteTables
+import settings
 from security_groups import SecurityGroups
 from subnets import Subnets
 from utils import setup_logger, merge_config, filter_resources, tag_with_name_with_suffix
@@ -70,6 +71,7 @@ class AWSProxies(object):
             ec2_client=self.ec2_client,
             tag_base_name=self.tag_base_name
         )
+        self.network_acls = NetworkAcls(self.ec2, self.tag_base_name)
 
     def bootstrap_instances_infrastucture(self, instances_groups_config):
 
@@ -124,9 +126,8 @@ class AWSProxies(object):
         self.route_tables.associate_subnets_to_routes(self.config["vpcs"])
         self.route_tables.create_ig_route(self.config["vpcs"])
 
-        network_acls = self.get_or_create_network_acls(self.config["vpcs"])
-        self.config["vpcs"] = merge_config(
-            self.config["vpcs"], network_acls)
+        network_acls = self.network_acls.get_or_create(self.config["vpcs"])
+        self.config["vpcs"] = merge_config(self.config["vpcs"], network_acls)
 
     def delete_proxies_infrastructure(self):
         """Delete proxies infrastructure
@@ -137,71 +138,9 @@ class AWSProxies(object):
         self.security_groups.delete()
         self.subnets.delete()
         self.route_tables.delete()
-        self.delete_network_acls()
+        self.network_acls.delete()
         self.internet_gateways.delete()
         self.vpcs.delete()
-
-    def delete_network_acls(self):
-        """Delete network acls
-        """
-        network_acls = filter_resources(
-            self.ec2.network_acls,
-            "tag:Name",
-            self.tag_base_name + '-*'
-        )
-
-        for network_acl in network_acls:
-            if not network_acl.is_default:
-                self.ec2_client.delete_network_acl(
-                    NetworkAclId=network_acl.id
-                )
-
-    def get_or_create_network_acls(self, vpcs):
-        """Get or create network acls
-
-        Args:
-            vpcs (object): Vpcs config
-
-        Returns:
-            object: Network acl config
-        """
-        created_resources = []
-        index = 0
-        for vpc_id, vpc in vpcs.iteritems():
-            found_resources = filter_resources(
-                self.ec2.network_acls, "vpc-id", vpc_id)
-
-            if not found_resources:
-                resource = self.ec2.create_network_acl(
-                    VpcId=vpc_id
-                )
-
-                resource.id
-            else:
-                resource = self.ec2.NetworkAcl(found_resources[0].id)
-
-                self.logger.info(
-                    "A network acl " +
-                    "with ID '%s' and attached to pvc '%s' has been created or already exists",
-                    resource.id,
-                    vpc_id
-                )
-
-            tag_with_name_with_suffix(
-                resource, "netacl", index, self.tag_base_name)
-
-            created_resources.append(
-                {
-                    "NetworkAclId": resource.id,
-                }
-            )
-
-            index = index + 1
-        return {
-            vpc["VpcId"]: {
-                "NetworkAcls": created_resources
-            }
-        }
 
     def get_image_id_from_name(self, image_name):
         """Get AMI image ID from AMI name
