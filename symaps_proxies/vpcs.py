@@ -30,37 +30,37 @@ class Vpcs(BaseResources):
         self.logger = setup_logger(__name__, log_level, boto_log_level)
 
     def get_or_create(self, config):
-            """Get or create Aws Ec2 vpcs
+        """Get or create Aws Ec2 vpcs
 
-            Args:
-                config (dict): Vpcs config
+        Args:
+            config (dict): Vpcs config
 
-            Returns:
-                dict: vpcs configs
-            """
+        Returns:
+            dict: vpcs configs
+        """
 
-            created_vpcs = {}
-            for index, vpc_config in enumerate(config):
-                vpcs = filter_resources(
-                    self.ec2.vpcs, "cidrBlock", vpc_config["CidrBlock"])
+        created_vpcs = {}
+        for index, vpc_config in enumerate(config):
+            vpcs = filter_resources(
+                self.ec2.vpcs, "cidrBlock", vpc_config["CidrBlock"])
 
-                if not vpcs:
-                    vpc = self.ec2.create_vpc(CidrBlock=vpc_config["CidrBlock"])
-                else:
-                    vpc = self.ec2.Vpc(vpcs[0].id)
+            if not vpcs:
+                vpc = self.ec2.create_vpc(CidrBlock=vpc_config["CidrBlock"])
+            else:
+                vpc = self.ec2.Vpc(vpcs[0].id)
 
-                self.logger.info("A vpc with ID '%s' and cidr block '%s' has been created or already exists",
-                                 vpc.vpc_id,
-                                 vpc_config["CidrBlock"]
-                                 )
+            self.logger.info("A vpc with ID '%s' and cidr block '%s' has been created or already exists",
+                             vpc.vpc_id,
+                             vpc_config["CidrBlock"]
+                             )
 
-                tag_with_name_with_suffix(
-                    vpc, "vpc", index, self.tag_base_name)
+            tag_with_name_with_suffix(
+                vpc, "vpc", index, self.tag_base_name)
 
-                vpc_config["VpcId"] = vpc.vpc_id
-                created_vpcs[vpc.vpc_id] = vpc_config
+            vpc_config["VpcId"] = vpc.vpc_id
+            created_vpcs[vpc.vpc_id] = vpc_config
 
-            return created_vpcs
+        return created_vpcs
 
     def delete(self):
         """Delete Vpcs
