@@ -28,7 +28,7 @@ class SecurityGroups(object):
             dict: Security groups configs
         """
 
-        created_resources = []
+        created_security_groups = []
         for vpc_id, vpc_config in config.iteritems():
             if "SecurityGroups" in vpc_config:
                 for index, sg in enumerate(vpc_config["SecurityGroups"]):
@@ -62,7 +62,7 @@ class SecurityGroups(object):
                     tag_with_name_with_suffix(
                         resource, "sg", index, self.tag_base_name)
 
-                    created_resources.append(
+                    created_security_groups.append(
                         {
                             "SecurityGroupId": resource.id,
                             "GroupName": sg["GroupName"],
@@ -72,11 +72,11 @@ class SecurityGroups(object):
 
         return {
             vpc_config["VpcId"]: {
-                "SecurityGroups": created_resources
+                "SecurityGroups": created_security_groups
             }
         }
 
-        return created_resources
+        return created_security_groups
 
     def delete(self):
         """Delete security groups
