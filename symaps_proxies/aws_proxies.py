@@ -3,6 +3,7 @@ from __future__ import division
 import boto3
 from internet_gateways import InternetGateways
 from network_acls import NetworkAcls
+from network_interfaces import NetworkInterfaces
 import math
 from route_tables import RouteTables
 import settings
@@ -74,6 +75,10 @@ class AWSProxies(object):
             tag_base_name=self.tag_base_name
         )
         self.network_acls = NetworkAcls(self.ec2, self.tag_base_name)
+        self.network_interfaces = NetworkInterfaces(
+            ec2=self.ec2,
+            ec2_client=self.ec2_client,
+            tag_base_name=self.tag_base_name)
 
     def bootstrap_instances_infrastucture(self, instances_groups_config):
 
@@ -95,10 +100,10 @@ class AWSProxies(object):
         self.bootstrap_vpcs_infrastructure([tmp_vpcs_config])
 
         # Create network interfaces
-        self.create_network_interfaces(self.config["vpcs"])
+        self.network_interfaces.create(self.config["vpcs"])
 
         # Associate ips to elastic network interfaces
-        self.associate_public_ips_to_enis()
+        self.network_interfaces.associate_public_ips_to_enis()
 
         # Create instances
         # self.create_instances(self.config['instances_groups'], self.config["vpcs"])
@@ -134,9 +139,9 @@ class AWSProxies(object):
     def delete_proxies_infrastructure(self):
         """Delete proxies infrastructure
         """
-        self.release_public_ips()
+        self.network_interfaces.release_public_ips()
         self.terminate_instances()
-        self.delete_enis()
+        self.network_interfaces.delete()
         self.security_groups.delete()
         self.subnets.delete()
         self.route_tables.delete()
@@ -342,140 +347,6 @@ class AWSProxies(object):
                         })
 
         return tmp_vpcs_config
-
-    def create_network_interfaces(self, vpcs):
-        """Create network interfaces
-
-        Args:
-            vpcs (dict): Vpcs config
-        """
-        for vpc_id, vpc in vpcs.iteritems():
-            index = 0
-            for subnet in vpc["Subnets"]:
-                aws_subnet = self.ec2.Subnet(subnet["SubnetId"])
-                for eni in subnet["NetworkInterfaces"]:
-                    found_eni = filter_resources(
-                        aws_subnet.network_interfaces, "tag-value", eni["uid"])
-                    if not found_eni:
-                        created_eni = aws_subnet.create_network_interface(
-                            SecondaryPrivateIpAddressCount=eni["Ips"][
-                                "SecondaryPrivateIpAddressCount"],
-                        )
-                        tag_with_name_with_suffix(
-                            created_eni, "eni", index, self.tag_base_name)
-
-                        created_eni.create_tags(
-                            Tags=[{
-                                "Key": "uid",
-                                "Value": eni["uid"]
-                            }]
-                        )
-                        index = index + 1
-
-                    self.logger.info("A network interface '%s' for subnet '%s' has been created or already exists",
-                                     eni["uid"],
-                                     subnet["SubnetId"]
-                                     )
-
-    def associate_public_ips_to_enis(self):
-        """Associate public ips to elastic network interfaces
-        """
-        aws_enis = list(
-            self.ec2.network_interfaces.filter(
-                Filters=[
-                    {
-                        "Name": "tag:Name",
-                        "Values": [self.tag_base_name + '-*']
-                    }
-                ]
-            )
-        )
-
-        for aws_eni in aws_enis:
-            for aws_private_ip_address in aws_eni.private_ip_addresses:
-                msg = "The network interface '{0}' private ip '{1}' has been or is already" \
-                    " associated with public ip '{2}'"
-
-                if 'Association' not in aws_private_ip_address:
-                    aws_eip_alloc = self.ec2_client.allocate_address(
-                        Domain='vpc'
-                    )
-                    self.ec2_client.associate_address(
-                        AllocationId=aws_eip_alloc['AllocationId'],
-                        NetworkInterfaceId=aws_eni.id,
-                        PrivateIpAddress=aws_private_ip_address['PrivateIpAddress']
-                    )
-
-                    msg = msg.format(
-                        aws_eni.id,
-                        aws_private_ip_address['PrivateIpAddress'],
-                        aws_eip_alloc['PublicIp']
-                    )
-                else:
-                    msg = msg.format(
-                        aws_eni.id,
-                        aws_private_ip_address['PrivateIpAddress'],
-                        aws_private_ip_address['Association']['PublicIp']
-                    )
-
-                self.logger.info(msg)
-
-    def release_public_ips(self):
-        """Dissociate public ips to elastic network interfaces and release ips
-        """
-        aws_enis = filter_resources(
-            self.ec2.network_interfaces, "tag:Name", self.tag_base_name + '-*')
-
-        eni_ids = []
-        for aws_eni in aws_enis:
-            for aws_private_ip_address in aws_eni.private_ip_addresses:
-                eni_ids.append(aws_eni.id)
-
-        aws_addresses = self.ec2_client.describe_addresses(
-            Filters=[
-                {
-                    'Name': 'network-interface-id',
-                    'Values': eni_ids
-                },
-            ],
-        )
-
-        for aws_public_ip in aws_addresses['Addresses']:
-            self.ec2_client.disassociate_address(
-                AssociationId=aws_public_ip['AssociationId']
-            )
-
-            self.ec2_client.release_address(
-                AllocationId=aws_public_ip['AllocationId'],
-            )
-
-            self.logger.info(
-                "The public IP '%s' has been dissociated from network interface '%s' and released",
-                aws_public_ip['PublicIp'],
-                aws_public_ip['NetworkInterfaceId']
-            )
-
-    def delete_enis(self):
-        """Delete elastic network interfaces
-        """
-        aws_enis = filter_resources(
-            self.ec2.network_interfaces, "tag:Name", self.tag_base_name + '-*')
-
-        for aws_eni in aws_enis:
-            if hasattr(aws_eni, 'attachment') and aws_eni.attachment is not None:
-                print aws_eni.attachment
-                self.ec2_client.detach_network_interface(
-                    AttachmentId=aws_eni.attachment['AttachmentId'],
-                )
-
-            self.ec2_client.delete_network_interface(
-                NetworkInterfaceId=aws_eni.id
-            )
-
-            self.logger.info(
-                "The network interface '%s' has been detached from instance and deleted",
-                aws_eni.id
-            )
 
     def terminate_instances(self):
         """Terminate instances
