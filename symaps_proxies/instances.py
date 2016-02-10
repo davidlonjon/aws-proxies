@@ -66,6 +66,43 @@ class Instances(BaseResources):
                 aws_instances_ids_str
             )
 
+    def get_running_proxies_ips(self, silent=False):
+        """Get the public and private ips of all running proxy instances
+
+        Args:
+            silent (bool, optional): Silent
+
+        Returns:
+            Dict: Dictionnary of tuple public/private ips
+        """
+        filter = [
+            {
+                "Name": "tag:Name",
+                "Values": [self.tag_base_name + '-*']
+            },
+            {
+                "Name": "instance-state-name",
+                "Values": ['running']
+            },
+        ]
+
+        if not silent:
+            print "Waiting for all proxies to be running..."
+
+        waiter = self.ec2_client.get_waiter('instance_running')
+        waiter.wait(Filters=filter)
+
+        instances = self.ec2.instances.filter(Filters=filter)
+        ips = []
+        for instance in list(instances):
+            for eni in instance.network_interfaces_attribute:
+                for private_ip_addresses in eni['PrivateIpAddresses']:
+                    ips.append(
+                        (private_ip_addresses['Association']['PublicIp'], private_ip_addresses['PrivateIpAddress'])
+                    )
+
+        return ips
+
     def create(self, instances_groups_config, vpcs_config):
         """Create instances
 
