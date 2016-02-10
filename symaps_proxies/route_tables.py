@@ -103,10 +103,7 @@ class RouteTables(object):
                     )
 
             if not is_main_route_table:
-                self.ec2_client.delete_route_table(
-                    RouteTableId=route_table.id
-                )
-
+                route_table.delete()
                 self.logger.info(
                     "The route table with ID '%s' has been deleted",
                     route_table.id
