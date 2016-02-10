@@ -3,6 +3,7 @@ from __future__ import division
 import boto3
 from instances import Instances
 from internet_gateways import InternetGateways
+import logging
 from network_acls import NetworkAcls
 from network_interfaces import NetworkInterfaces
 import math
@@ -27,8 +28,12 @@ class AWSProxies(object):
         Raises:
             TypeError: Description
         """
+
+        self.log_level = kwargs.pop("log_level", logging.WARNING)
+        self.boto_log_level = kwargs.pop("boto_log_level", logging.WARNING)
+
         # Setup logger
-        self.logger = setup_logger(__name__)
+        self.logger = setup_logger(__name__, self.log_level, self.boto_log_level)
 
         # Get AWS Session
         self.session = boto3.Session(profile_name=profile)
@@ -67,7 +72,9 @@ class AWSProxies(object):
         resources_params = {
             "ec2": self.ec2,
             "ec2_client": self.ec2_client,
-            "tag_base_name": self.tag_base_name
+            "tag_base_name": self.tag_base_name,
+            "log_level": self.log_level,
+            "boto_log_level": self.boto_log_level
         }
 
         self.vpcs = Vpcs(**resources_params)

@@ -4,7 +4,7 @@ import logging
 import sys
 
 
-def setup_logger(name):
+def setup_logger(name, level=logging.WARNING, boto_logging_level=logging.WARNING):
         """Setup logger
 
         Returns:
@@ -19,14 +19,15 @@ def setup_logger(name):
                     pass
 
         logging.getLogger(name).addHandler(NullHandler())
-        logging.basicConfig(level=logging.INFO)
 
         # Raise other modules log levels to make the logs for this module less
         # cluttered with noise
         for _ in ("boto3", "botocore"):
-            logging.getLogger(_).setLevel(logging.WARNING)
+            logging.getLogger(_).setLevel(boto_logging_level)
 
-        return logging.getLogger(name)
+        logger = logging.getLogger(name)
+        logger.setLevel(level)
+        return logger
 
 
 def create_suffix(suffix, index):

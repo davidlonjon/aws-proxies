@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from base_resources import BaseResources
+import logging
 from utils import setup_logger, filter_resources, tag_with_name_with_suffix
 
 
@@ -8,9 +9,25 @@ class SecurityGroups(BaseResources):
     """Security groups representation
     """
 
-    def __init__(self, ec2, ec2_client, tag_base_name):
+    def __init__(self, ec2, ec2_client, tag_base_name, **kwargs):
+        """Constructor
+
+        Args:
+            ec2 (object): Aws Ec2 session
+            ec2_client (object): Aws ec2 session
+            tag_base_name (string): Tag base name
+            **kwargs: Multiple arguments
+
+        Raises:
+            TypeError: Description
+        """
         BaseResources.__init__(self, ec2, ec2_client, tag_base_name)
-        self.logger = setup_logger(__name__)
+        log_level = kwargs.pop("log_level", logging.WARNING)
+        boto_log_level = kwargs.pop("boto_log_level", logging.WARNING)
+
+        if kwargs:
+            raise TypeError("Unexpected **kwargs: %r" % kwargs)
+        self.logger = setup_logger(__name__, log_level, boto_log_level)
 
     def get_or_create(self, config):
         """Get or create Aws Ec2 security groups

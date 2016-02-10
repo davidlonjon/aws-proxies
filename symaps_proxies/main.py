@@ -77,7 +77,7 @@ def main():
     logger = setup_logger()
 
     try:
-        proxies = AWSProxies(profile='david_dev')
+        proxies = AWSProxies(profile='david_dev', log_level=20)
     except Exception as e:
         logger.error("Error: %s", e.message)
         sys.exit()
