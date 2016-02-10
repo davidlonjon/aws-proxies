@@ -204,23 +204,12 @@ class AWSProxies(object):
                 instance_eni_private_ips_count = instance_eni_mapping[0][2]
                 instance_eni_public_ips_count = instance_eni_mapping[0][2]
 
-            # print "instance_enis_count: {0}".format(instance_enis_count)
-            # print "instance_eni_private_ips_count: {0}".format(instance_eni_private_ips_count)
-            # print "instance_eni_public_ips_count:
-            # {0}".format(instance_eni_public_ips_count)
-
             instance_possible_ips_count = instance_eni_private_ips_count * \
                 instance_enis_count
 
-            # print "instance_possible_ips_count: {0}".format(instance_possible_ips_count)
-            # print "self.proxy_nodes_count: {0}".format(self.proxy_nodes_count)
-            # subnets_count = instance_enis_count
-            # print "subnets_count: {0}".format(subnets_count)
             instance_per_type_count = int(
                 math.ceil(self.proxy_nodes_count / instance_possible_ips_count))
 
-            # print "instance_per_type_count:
-            # {0}".format(instance_per_type_count)
             instance_config["MinCount"] = instance_per_type_count
             instance_config["MaxCount"] = instance_per_type_count
 
@@ -229,9 +218,6 @@ class AWSProxies(object):
                 cidr_suffix_ips_number_mapping=self.cidr_suffix_ips_number_mapping)
             subnet_cidr_block = get_subnet_cidr_block(
                 instance_config["CidrBlockFormatting"], 0, subnet_cidr_suffix)
-
-            # print "*****"
-            # print "subnet_cidr_suffix: {0}".format(subnet_cidr_suffix)
 
             instance_config["Instances"] = []
             possible_ips_remaining = self.proxy_nodes_count
