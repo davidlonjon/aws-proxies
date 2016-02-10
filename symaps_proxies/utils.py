@@ -79,6 +79,45 @@ def query_yes_no(question, default="yes"):
                              "(or 'y' or 'n').\n")
 
 
+def confirm_proxies_and_infra_creation(instance_group_config, available_ips):
+    """Ask confirmation to create proxies and vpc infrastructure
+
+    Args:
+        instance_group_config (dict): Instance group config
+        available_ips (integer): Available ips
+
+    Returns:
+        boolean: Answer
+    """
+    instances_message = []
+    for instances_group in instance_group_config:
+        instances_message.append(
+            "{0} x {1} instance(s)".format(instances_group['MaxCount'], instances_group['InstanceType'])
+        )
+    instances_message_string = ' and '.join(instances_message)
+    question = "\n{0} bound to a total of {1} elastic ip(s) will be created.\n" \
+        "Also a new vpc with dependent resources will be created.\n" \
+        "Do you want to continue?".format(instances_message_string, available_ips)
+
+    return query_yes_no(question)
+
+
+def confirm_proxies_and_infra_deletion(tag_base_name):
+    """Ask confirmation to delete proxies and vpc infrastructure
+
+    Args:
+        tag_base_name (string): tag base name
+
+    Returns:
+        boolean: Answer
+    """
+    question = "\nAll existing proxies instances tagged '{0}' will be terminated, publics ips released " \
+        "and every ec2 resources tagged '{0}' will also be deleted.\n" \
+        "Do you want to continue?".format(tag_base_name)
+
+    return query_yes_no(question)
+
+
 # Taken from
 # http://stackoverflow.com/questions/38987/how-can-i-merge-two-python-dictionaries-in-a-single-expression
 def merge_dicts(*dict_args):

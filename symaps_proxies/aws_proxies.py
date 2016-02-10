@@ -11,8 +11,10 @@ from route_tables import RouteTables
 import settings
 from security_groups import SecurityGroups
 from subnets import Subnets
+import sys
 from utils import setup_logger, merge_config, get_subnet_cidr_block, \
-    get_vpc_gateway_ip, get_subnet_cidr_suffix, get_instance_eni_mapping
+    get_vpc_gateway_ip, get_subnet_cidr_suffix, get_instance_eni_mapping, \
+    confirm_proxies_and_infra_creation, confirm_proxies_and_infra_deletion
 from vpcs import Vpcs
 
 
@@ -86,7 +88,7 @@ class AWSProxies(object):
         self.network_interfaces = NetworkInterfaces(**resources_params)
         self.instances = Instances(**resources_params)
 
-    def create(self, proxies_config):
+    def create(self, proxies_config, ask_confirm=True, silent=False):
         """Create proxies and its infrastructure
 
         Args:
@@ -102,7 +104,7 @@ class AWSProxies(object):
             raise AttributeError("The proxies config is missing the 'available_ips' attribute")
 
         # Delete the proxies infrastructure first
-        self.delete()
+        self.delete(ask_confirm=ask_confirm, silent=silent)
 
         # Setup proxies instances groups config
         created_instances_groups_config = self.__setup_instances_groups_config(proxies_config)
@@ -110,6 +112,13 @@ class AWSProxies(object):
         self.config["instances_groups"].append(created_instances_groups_config)
 
         self.check_image_virtualization_against_instance_types(self.config["instances_groups"])
+
+        if ask_confirm:
+            if not confirm_proxies_and_infra_creation(self.config["instances_groups"], proxies_config['available_ips']):
+                sys.exit()
+
+        if not silent:
+            print "\nCreating the vpc and starting the instances. Please wait..."
 
         # Create VPCS Infrastructure
         self.__bootstrap_vpcs_infrastructure(proxies_config['instances_config'])
@@ -121,7 +130,10 @@ class AWSProxies(object):
         self.network_interfaces.associate_public_ips_to_enis()
 
         # Create instances
-        # self.instances.create(self.config['instances_groups'], self.config["vpcs"])
+        self.instances.create(self.config['instances_groups'], self.config["vpcs"])
+
+        if not silent:
+            print "\nCreation completed. Instance(s) are booting up."
 
     def __bootstrap_vpcs_infrastructure(self, instances_config):
         """Bootstrap Vpcs infrastructure
@@ -155,9 +167,17 @@ class AWSProxies(object):
         network_acls = self.network_acls.get_or_create(self.config["vpcs"])
         self.config["vpcs"] = merge_config(self.config["vpcs"], network_acls)
 
-    def delete(self):
+    def delete(self, ask_confirm=True, silent=False):
         """Delete proxies and its infrastructure
         """
+
+        if ask_confirm:
+            if not confirm_proxies_and_infra_deletion(self.tag_base_name):
+                sys.exit()
+
+        if not silent:
+            print "\nDeleting the vpc and terminating the instances. Please wait..."
+
         self.network_interfaces.release_public_ips()
         self.instances.terminate()
         self.network_interfaces.delete()
