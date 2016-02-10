@@ -46,7 +46,7 @@ class AWSProxies(object):
         )
 
         self.proxy_nodes_count = kwargs.pop("proxy_nodes_count", 1)
-        self.tag_name_base = kwargs.pop("tag_name_base", settings.TAG_NAME_BASE)
+        self.tag_base_name = kwargs.pop("tag_base_name", settings.TAG_BASE_NAME)
 
         self.hvm_only_instance_types = kwargs.pop(
             "hvm_only_instance_types",
@@ -61,14 +61,14 @@ class AWSProxies(object):
             "instances_groups": []
         }
 
-        self.vpcs = Vpcs(self.ec2, self.tag_name_base)
-        self.internet_gateways = InternetGateways(self.ec2, self.tag_name_base)
-        self.subnets = Subnets(self.ec2, self.tag_name_base)
-        self.security_groups = SecurityGroups(self.ec2, self.tag_name_base)
+        self.vpcs = Vpcs(self.ec2, self.tag_base_name)
+        self.internet_gateways = InternetGateways(self.ec2, self.tag_base_name)
+        self.subnets = Subnets(self.ec2, self.tag_base_name)
+        self.security_groups = SecurityGroups(self.ec2, self.tag_base_name)
         self.route_tables = RouteTables(
             ec2=self.ec2,
             ec2_client=self.ec2_client,
-            tag_base_name=self.tag_name_base
+            tag_base_name=self.tag_base_name
         )
 
     def bootstrap_instances_infrastucture(self, instances_groups_config):
@@ -147,7 +147,7 @@ class AWSProxies(object):
         network_acls = filter_resources(
             self.ec2.network_acls,
             "tag:Name",
-            self.tag_name_base + '-*'
+            self.tag_base_name + '-*'
         )
 
         for network_acl in network_acls:
@@ -188,7 +188,7 @@ class AWSProxies(object):
                 )
 
             tag_with_name_with_suffix(
-                resource, "netacl", index, self.tag_name_base)
+                resource, "netacl", index, self.tag_base_name)
 
             created_resources.append(
                 {
@@ -480,7 +480,7 @@ class AWSProxies(object):
                                 "SecondaryPrivateIpAddressCount"],
                         )
                         tag_with_name_with_suffix(
-                            created_eni, "eni", index, self.tag_name_base)
+                            created_eni, "eni", index, self.tag_base_name)
 
                         created_eni.create_tags(
                             Tags=[{
@@ -503,7 +503,7 @@ class AWSProxies(object):
                 Filters=[
                     {
                         "Name": "tag:Name",
-                        "Values": [self.tag_name_base + '-*']
+                        "Values": [self.tag_base_name + '-*']
                     }
                 ]
             )
@@ -542,7 +542,7 @@ class AWSProxies(object):
         """Dissociate public ips to elastic network interfaces and release ips
         """
         aws_enis = filter_resources(
-            self.ec2.network_interfaces, "tag:Name", self.tag_name_base + '-*')
+            self.ec2.network_interfaces, "tag:Name", self.tag_base_name + '-*')
 
         eni_ids = []
         for aws_eni in aws_enis:
@@ -577,7 +577,7 @@ class AWSProxies(object):
         """Delete elastic network interfaces
         """
         aws_enis = filter_resources(
-            self.ec2.network_interfaces, "tag:Name", self.tag_name_base + '-*')
+            self.ec2.network_interfaces, "tag:Name", self.tag_base_name + '-*')
 
         for aws_eni in aws_enis:
             if hasattr(aws_eni, 'attachment') and aws_eni.attachment is not None:
@@ -602,7 +602,7 @@ class AWSProxies(object):
         aws_instances = self.ec2.instances.filter(Filters=[
             {
                 "Name": "tag:Name",
-                "Values": [self.tag_name_base + '-*']
+                "Values": [self.tag_base_name + '-*']
             },
             {
                 "Name": "instance-state-name",
@@ -690,7 +690,7 @@ class AWSProxies(object):
                 aws_reservation = self.ec2_client.run_instances(**instance_config)
                 aws_instance_config = aws_reservation['Instances'][0]
                 aws_instance = self.ec2.Instance(aws_instance_config['InstanceId'])
-                tag_with_name_with_suffix(aws_instance, "i", instance_index, self.tag_name_base)
+                tag_with_name_with_suffix(aws_instance, "i", instance_index, self.tag_base_name)
                 instance_config['InstanceId'] = aws_instance_config['InstanceId']
                 instances_config.append(instance_config)
 

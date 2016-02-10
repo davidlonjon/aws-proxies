@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-TAG_NAME_BASE = 'symaps-prod-proxies'
+TAG_BASE_NAME = 'symaps-prod-proxies'
 
 # Instance Type, Maximum Elastic Network Interfaces, IP Addresses per Interface
 ENI_MAPPINGS = [
