@@ -4,6 +4,7 @@ import boto3
 from internet_gateways import InternetGateways
 import math
 import settings
+from route_tables import RouteTables
 from security_groups import SecurityGroups
 from subnets import Subnets
 from utils import setup_logger, merge_config, filter_resources, tag_with_name_with_suffix
@@ -64,6 +65,11 @@ class AWSProxies(object):
         self.internet_gateways = InternetGateways(self.ec2, self.tag_name_base)
         self.subnets = Subnets(self.ec2, self.tag_name_base)
         self.security_groups = SecurityGroups(self.ec2, self.tag_name_base)
+        self.route_tables = RouteTables(
+            ec2=self.ec2,
+            ec2_client=self.ec2_client,
+            tag_base_name=self.tag_name_base
+        )
 
     def bootstrap_instances_infrastucture(self, instances_groups_config):
 
@@ -112,12 +118,11 @@ class AWSProxies(object):
         security_groups = self.security_groups.get_or_create(self.config["vpcs"])
         self.config["vpcs"] = merge_config(self.config["vpcs"], security_groups)
 
-        route_tables = self.get_or_create_route_tables(self.config["vpcs"])
-        self.config["vpcs"] = merge_config(
-            self.config["vpcs"], route_tables)
+        route_tables = self.route_tables.get_or_create(self.config["vpcs"])
+        self.config["vpcs"] = merge_config(self.config["vpcs"], route_tables)
 
-        self.associate_subnets_to_routes(self.config["vpcs"])
-        self.create_ig_route(self.config["vpcs"])
+        self.route_tables.associate_subnets_to_routes(self.config["vpcs"])
+        self.route_tables.create_ig_route(self.config["vpcs"])
 
         network_acls = self.get_or_create_network_acls(self.config["vpcs"])
         self.config["vpcs"] = merge_config(
@@ -131,141 +136,10 @@ class AWSProxies(object):
         self.delete_enis()
         self.security_groups.delete()
         self.subnets.delete()
-        self.delete_route_tables()
+        self.route_tables.delete()
         self.delete_network_acls()
         self.internet_gateways.delete()
         self.vpcs.delete()
-
-    def get_or_create_route_tables(self, vpcs):
-        """Get or create route tables
-
-        Args:
-            vpcs (object): Vpcs config
-
-        Returns:
-            object: Route tables config
-        """
-        created_resources = []
-        index = 0
-        for vpc_id, vpc in vpcs.iteritems():
-            found_resources = filter_resources(
-                self.ec2.route_tables, "vpc-id", vpc_id)
-
-            if not found_resources:
-                resource = self.ec2.create_route_table(VpcId=vpc_id)
-            else:
-                resource = self.ec2.RouteTable(found_resources[0].id)
-
-                self.logger.info(
-                    "A route table " +
-                    "with ID '%s' and attached to vpc '%s' has been created or already exists",
-                    resource.id,
-                    vpc_id
-                )
-
-            tag_with_name_with_suffix(
-                resource, "rt", index, self.tag_name_base)
-
-            created_resources.append(
-                {
-                    "RouteTableId": resource.id
-                }
-            )
-
-            index = index + 1
-        return {
-            vpc["VpcId"]: {
-                "RouteTables": created_resources
-            }
-        }
-
-    def delete_route_tables(self):
-        """Delete route tables
-        """
-        route_tables = filter_resources(
-            self.ec2.route_tables,
-            "tag:Name",
-            self.tag_name_base + '-*'
-        )
-
-        for route_table in route_tables:
-            is_main_route_table = True
-            if hasattr(route_table, 'associations'):
-                for association in route_table.associations.all():
-                    if not association.main:
-                        is_main_route_table = False
-                        self.ec2_client.disassociate_route_table(
-                            AssociationId=association.id
-                        )
-
-                        self.logger.info(
-                            "The route table association with ID '%s' has been deleted",
-                            association.id,
-                        )
-
-            for route in route_table.routes:
-                if 'local' != route['GatewayId']:
-                    self.ec2_client.delete_route(
-                        RouteTableId=route_table.id,
-                        DestinationCidrBlock=route['DestinationCidrBlock']
-                    )
-
-                    self.logger.info(
-                        "The route for gateway ID '%s' with cird block '%s' and " +
-                        "associated to route table '%s' has been deleted",
-                        route['GatewayId'],
-                        route['DestinationCidrBlock'],
-                        route_table.id
-                    )
-
-            if not is_main_route_table:
-                self.ec2_client.delete_route_table(
-                    RouteTableId=route_table.id
-                )
-
-                self.logger.info(
-                    "The route table with ID '%s' has been deleted",
-                    route_table.id
-                )
-
-    def associate_subnets_to_routes(self, vpcs):
-        """Associate subnets to routes
-
-        Args:
-            vpcs (dict): Vpcs config
-        """
-        for vpc_id, vpc in vpcs.iteritems():
-            for route in vpc["RouteTables"]:
-                route_resource = self.ec2.RouteTable(route["RouteTableId"])
-
-                for subnet in vpc["Subnets"]:
-                    found_associations = filter_resources(
-                        self.ec2.route_tables, "association.subnet-id", subnet["SubnetId"])
-                    if not found_associations:
-                        route_resource.associate_with_subnet(
-                            SubnetId=subnet["SubnetId"])
-
-    def create_ig_route(self, vpcs):
-        """Create internet gateway route
-
-        Args:
-            vpcs (dict): Vpcs config
-        """
-        for vpc_id, vpc in vpcs.iteritems():
-            for route in vpc["RouteTables"]:
-                resource = self.ec2.RouteTable(route["RouteTableId"])
-                for route in resource.routes:
-                    route_exists = False
-                    for ig in vpc["InternetGateways"]:
-                        route_exists = False
-                        if ig["InternetGatewayId"] == route["GatewayId"]:
-                            route_exists = True
-                            break
-                        if not route_exists:
-                            resource.create_route(
-                                DestinationCidrBlock="0.0.0.0/0",
-                                GatewayId=ig["InternetGatewayId"],
-                            )
 
     def delete_network_acls(self):
         """Delete network acls
