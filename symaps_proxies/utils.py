@@ -196,11 +196,11 @@ def get_vpc_gateway_ip(cidr_block_formatting):
     return vpc_gateway_ip
 
 
-def get_subnet_cidr_suffix(proxy_nodes_count, cidr_suffix_ips_number_mapping):
+def get_subnet_cidr_suffix(ips_count, cidr_suffix_ips_number_mapping):
         """Get subnet cidr suffix
 
         Args:
-            proxy_nodes_count (integer): proxy nodes count
+            ips_count (integer): Ips count
             cidr_suffix_ips_number_mapping (dict): Cidr suffix ips number mapping
 
         Returns:
@@ -209,7 +209,7 @@ def get_subnet_cidr_suffix(proxy_nodes_count, cidr_suffix_ips_number_mapping):
         cidr_suffix = "/28"
         if cidr_suffix_ips_number_mapping is not None:
             for item in cidr_suffix_ips_number_mapping:
-                if item[0] > proxy_nodes_count:
+                if item[0] > ips_count:
                     cidr_suffix = item[1]
                     break
 

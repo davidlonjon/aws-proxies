@@ -4,44 +4,45 @@ from aws_proxies import AWSProxies
 import logging
 import sys
 
-PROXY_NODES_COUNT = 4
-INSTANCES_GROUPS_CONFIG = [
-    {
-        'InstanceType': 't1.micro',
-        'ImageName': 'tinyproxy',
-        'VPCCidrBlock': '15.0.0.0/16',
-        'CidrBlockFormatting': '15.0.\{0\}.\{1\}',
-        'SecurityGroups': [
-            {
-                'GroupName': 'default',
-                'Description': 'Security group for proxies',
-                'IngressRules': [
-                    {
-                        'IpProtocol': 'tcp',
-                        'FromPort': 8888,
-                        'ToPort': 8888,
-                        'IpRanges': [
-                            {
-                                'CidrIp': '0.0.0.0/0'
-                            },
-                        ]
-                    },
-                    {
-                        'IpProtocol': 'tcp',
-                        'FromPort': 22,
-                        'ToPort': 22,
-                        'IpRanges': [
-                            {
-                                'CidrIp': '0.0.0.0/0',
-                            },
-                        ]
-                    }
-                ]
-            }
-        ]
-    }
-]
-
+proxies_config = {
+    "available_ips": 4,
+    "instances_config": [
+        {
+            'InstanceType': 't1.micro',
+            'ImageName': 'tinyproxy',
+            'VPCCidrBlock': '15.0.0.0/16',
+            'CidrBlockFormatting': '15.0.\{0\}.\{1\}',
+            'SecurityGroups': [
+                {
+                    'GroupName': 'default',
+                    'Description': 'Security group for proxies',
+                    'IngressRules': [
+                        {
+                            'IpProtocol': 'tcp',
+                            'FromPort': 8888,
+                            'ToPort': 8888,
+                            'IpRanges': [
+                                {
+                                    'CidrIp': '0.0.0.0/0'
+                                },
+                            ]
+                        },
+                        {
+                            'IpProtocol': 'tcp',
+                            'FromPort': 22,
+                            'ToPort': 22,
+                            'IpRanges': [
+                                {
+                                    'CidrIp': '0.0.0.0/0',
+                                },
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
 
 
 def setup_logger():
@@ -76,16 +77,13 @@ def main():
     logger = setup_logger()
 
     try:
-        proxies = AWSProxies(
-            profile='david_dev',
-            proxy_nodes_count=PROXY_NODES_COUNT,
-        )
+        proxies = AWSProxies(profile='david_dev')
     except Exception as e:
         logger.error("Error: %s", e.message)
         sys.exit()
 
     # Create Instances Infrastructure
-    proxies.bootstrap_instances_infrastucture(INSTANCES_GROUPS_CONFIG)
+    proxies.create(proxies_config=proxies_config)
 
 if __name__ == "__main__":
     main()

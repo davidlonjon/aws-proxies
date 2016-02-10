@@ -49,7 +49,6 @@ class AWSProxies(object):
             settings.CIDR_SUFFIX_IPS_NUMBER_MAPPING
         )
 
-        self.proxy_nodes_count = kwargs.pop("proxy_nodes_count", 1)
         self.tag_base_name = kwargs.pop("tag_base_name", settings.TAG_BASE_NAME)
 
         self.hvm_only_instance_types = kwargs.pop(
@@ -80,24 +79,33 @@ class AWSProxies(object):
         self.network_interfaces = NetworkInterfaces(**resources_params)
         self.instances = Instances(**resources_params)
 
-    def bootstrap_instances_infrastucture(self, instances_groups_config):
+    def create(self, proxies_config):
+        """Create proxies and its infrastructure
+
+        Args:
+            proxies_config (dict): Proxies config
+
+        Raises:
+            AttributeError
+        """
+        if "instances_config" not in proxies_config:
+            raise AttributeError("The proxies config is missing the 'instances_config' attribute")
+
+        if "available_ips" not in proxies_config:
+            raise AttributeError("The proxies config is missing the 'available_ips' attribute")
 
         # Delete the proxies infrastructure first
-        self.delete_proxies_infrastructure()
+        self.delete()
 
-        # Setup proxies infrastructure config
-        created_instances_groups_config = self.__setup_instances_groups_config(
-            instances_groups_config)
+        # Setup proxies instances groups config
+        created_instances_groups_config = self.__setup_instances_groups_config(proxies_config)
 
         self.config["instances_groups"].append(created_instances_groups_config)
 
-        self.check_image_virtualization_against_instance_types(
-            self.config["instances_groups"])
-
-        tmp_vpcs_config = AWSProxies.__build_tmp_vpcs_config(instances_groups_config)
+        self.check_image_virtualization_against_instance_types(self.config["instances_groups"])
 
         # Create VPCS Infrastructure
-        self.bootstrap_vpcs_infrastructure([tmp_vpcs_config])
+        self.__bootstrap_vpcs_infrastructure(proxies_config['instances_config'])
 
         # Create network interfaces
         self.network_interfaces.create(self.config["vpcs"])
@@ -108,15 +116,19 @@ class AWSProxies(object):
         # Create instances
         # self.instances.create(self.config['instances_groups'], self.config["vpcs"])
 
-    def bootstrap_vpcs_infrastructure(self, vpcs):
+    def __bootstrap_vpcs_infrastructure(self, instances_config):
         """Bootstrap Vpcs infrastructure
 
         Args:
-            vpcs (object): Vpcs base config
-
+            instances_config (object): Instances config
         """
-        created_vpcs = self.vpcs.get_or_create(vpcs)
-        self.config["vpcs"] = created_vpcs
+        base_vpcs_config = []
+
+        base_vpcs_config.append(AWSProxies.__build_base_vpcs_config(instances_config))
+
+        vpcs_config = self.vpcs.get_or_create(base_vpcs_config)
+
+        self.config["vpcs"] = vpcs_config
 
         internet_gateways = self.internet_gateways.get_or_create(self.config["vpcs"])
         self.config["vpcs"] = merge_config(self.config["vpcs"], internet_gateways)
@@ -136,8 +148,8 @@ class AWSProxies(object):
         network_acls = self.network_acls.get_or_create(self.config["vpcs"])
         self.config["vpcs"] = merge_config(self.config["vpcs"], network_acls)
 
-    def delete_proxies_infrastructure(self):
-        """Delete proxies infrastructure
+    def delete(self):
+        """Delete proxies and its infrastructure
         """
         self.network_interfaces.release_public_ips()
         self.instances.terminate()
@@ -175,17 +187,18 @@ class AWSProxies(object):
 
         return image_id
 
-    def __setup_instances_groups_config(self, instances_config):
+    def __setup_instances_groups_config(self, proxies_config):
         """Setup instance groups config
 
         Args:
-            instances_config (dict): Instances config
+            proxies_config (dict): Proxies config
 
         Returns:
             dict: Created instances config
         """
         created_instance_type_config = []
-        for instance_config in instances_config:
+
+        for instance_config in proxies_config['instances_config']:
             if "ImageName" in instance_config:
                 image_id = self.get_image_id_from_name(
                     instance_config["ImageName"])
@@ -208,19 +221,19 @@ class AWSProxies(object):
                 instance_enis_count
 
             instance_per_type_count = int(
-                math.ceil(self.proxy_nodes_count / instance_possible_ips_count))
+                math.ceil(proxies_config['available_ips'] / instance_possible_ips_count))
 
             instance_config["MinCount"] = instance_per_type_count
             instance_config["MaxCount"] = instance_per_type_count
 
             subnet_cidr_suffix = get_subnet_cidr_suffix(
-                proxy_nodes_count=self.proxy_nodes_count,
+                ips_count=proxies_config['available_ips'],
                 cidr_suffix_ips_number_mapping=self.cidr_suffix_ips_number_mapping)
             subnet_cidr_block = get_subnet_cidr_block(
                 instance_config["CidrBlockFormatting"], 0, subnet_cidr_suffix)
 
             instance_config["Instances"] = []
-            possible_ips_remaining = self.proxy_nodes_count
+            possible_ips_remaining = proxies_config['available_ips']
             for i in range(0, instance_per_type_count):
                 instance_config["Instances"].append({
                     "NetworkInterfaces": [],
@@ -290,17 +303,17 @@ class AWSProxies(object):
                 break
 
     @staticmethod
-    def __build_tmp_vpcs_config(instances_groups_config):
-        """Build a temporary vpcs config schema
+    def __build_base_vpcs_config(instances_config):
+        """Build the base vpcs config
 
         Args:
-            instances_groups_config (dict): Instance types config
+            instances_config (dict): Instances config
 
         Returns:
-            dict: temporary vpcs config
+            dict: Base vpcs config
         """
-        tmp_vpcs_config = {}
-        for instance_type in instances_groups_config:
+        base_vpcs_config = {}
+        for instance_type in instances_config:
 
             if "VPCCidrBlock" not in instance_type:
                 raise ValueError("The instance type config need to have a VPCCidrBlock property")
@@ -308,7 +321,7 @@ class AWSProxies(object):
             if "SecurityGroups" not in instance_type:
                 raise ValueError("The instance type config need to have a VPCCidrBlock property")
 
-            tmp_vpcs_config = {
+            base_vpcs_config = {
                 "CidrBlock": instance_type["VPCCidrBlock"],
                 "CreateInternetGateway": True,
                 "Subnets": [],
@@ -321,7 +334,7 @@ class AWSProxies(object):
                     cidr_block = network_interface["Subnet"]["CidrBlock"]
 
                     subnet_already_exists = False
-                    for subnet in tmp_vpcs_config["Subnets"]:
+                    for subnet in base_vpcs_config["Subnets"]:
                         subnet_already_exists = False
                         if subnet["CidrBlock"] == cidr_block:
                             subnet_already_exists = True
@@ -335,9 +348,9 @@ class AWSProxies(object):
                     })
 
                     if not subnet_already_exists:
-                        tmp_vpcs_config["Subnets"].append({
+                        base_vpcs_config["Subnets"].append({
                             "CidrBlock": network_interface["Subnet"]["CidrBlock"],
                             "NetworkInterfaces": enis_per_subnet[cidr_block]
                         })
 
-        return tmp_vpcs_config
+        return base_vpcs_config
