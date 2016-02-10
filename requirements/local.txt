@@ -1,11 +1,5 @@
-# jupyter - Python Notebook
-jupyter>=1.0.0
-
 # Pytest as the testing framework
 pytest>=2.8.7
-
-# Boto to manage AWS
-boto
 
 # Boto to manage AWS
 boto3
