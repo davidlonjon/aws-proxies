@@ -4,6 +4,12 @@
 
 ### Other
 
+* Add a script to create the changelog which will also create the rst version of it. [David Lonjon]
+
+* Update the requirements files and add gitchangelog as a local requirement. [David Lonjon]
+
+* Add a changelog. [David Lonjon]
+
 * Add .gitchangelog.rc to help generating a changelog. [David Lonjon]
 
 
