@@ -1,12 +1,5 @@
 # Changelog
 
-## %%version%% (unreleased)
-
-### Updates
-
-* Update the package version. [David Lonjon]
-
-
 ## 0.1.1 (2016-02-11)
 
 ### Features
@@ -16,6 +9,8 @@
 * Add a script to create the rst version of the readme. [David Lonjon]
 
 ### Updates
+
+* Update the package version. [David Lonjon]
 
 * Modify the changelog sections name. [David Lonjon]
 
