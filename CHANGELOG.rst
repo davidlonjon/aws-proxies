@@ -4,8 +4,24 @@ Changelog
 %%version%% (unreleased)
 ------------------------
 
+Features
+~~~~~~~~
+
+-  Add a readme.rst file. [David Lonjon]
+
+-  Add a script to create the rst version of the readme. [David Lonjon]
+
+Updates
+~~~~~~~
+
+-  Modify the changelog sections name. [David Lonjon]
+
+-  Rename the readme file extension to be .md. [David Lonjon]
+
 Other
 ~~~~~
+
+-  Update changelog and add the rst version. [David Lonjon]
 
 -  Add a script to create the changelog which will also create the rst
    version of it. [David Lonjon]
