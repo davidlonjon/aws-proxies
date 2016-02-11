@@ -2,4 +2,7 @@
 pytest>=2.8.7
 
 # Boto to manage AWS
-boto3
+boto>=1.2.3
+
+# gitchangelog
+gitchangelog>=2.3.0
