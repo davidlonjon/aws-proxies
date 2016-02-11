@@ -18,7 +18,7 @@ from utils import setup_logger, merge_config, get_subnet_cidr_block, \
 from vpcs import Vpcs
 
 
-class AWSProxies(object):
+class Proxies(object):
 
     def __init__(self, profile, **kwargs):
         """Constructor
